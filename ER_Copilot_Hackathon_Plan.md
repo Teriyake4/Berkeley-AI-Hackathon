@@ -232,7 +232,7 @@ This matches the product (clinical events happen continuously), the stack (Redis
 ```
 Deepgram / Demo Mode → transcript.segment
               ↓
-         [Event Bus — Redis]
+     [Event Bus — Redis or asyncio in-memory]
          ↙    ↓    ↓    ↘
    extraction  timeline  safety  documentation
          ↓         ↓        ↓          ↓
@@ -240,7 +240,7 @@ Deepgram / Demo Mode → transcript.segment
          ↓
     research (on new med/allergy) → research.completed
               ↓
-         [WebSocket → Frontend]
+         [SSE /api/events → Frontend]
               ↓
     handoff.requested → handoff.generated
 ```
@@ -251,7 +251,7 @@ Every state change is an **event** with a typed payload. Agents are **dumb subsc
 
 ## Event Schema
 
-Define in `lib/events.ts` — first commit of the hackathon. Never rename fields; add new event types instead.
+Defined in `backend/events.py` (Python dataclasses). Never rename fields; add new event types instead.
 
 | Event | Publisher | Payload |
 |-------|-----------|---------|
@@ -300,10 +300,10 @@ Integration happens through the event bus, not function imports.
 ## Rules for Vibe Coding
 
 1. **No direct agent-to-agent imports.** Subscribe to events; never import another agent's module.
-2. **One shared `lib/events.ts`.** First commit. Everyone imports from it.
-3. **Idempotent handlers.** Events may replay; agents upsert state in Redis, not append blindly.
-4. **Redis = source of truth.** Pub/sub for live updates; Redis keys for encounter state so refresh doesn't lose the case.
-5. **Frontend is read-only + triggers.** UI never calls Claude, Deepgram, or Browserbase directly.
+2. **One shared `backend/events.py`.** Everyone imports from it. Never rename fields.
+3. **Idempotent handlers.** Events may replay; agents upsert state, not append blindly.
+4. **Redis = source of truth.** Pub/sub for live updates; Redis keys for encounter state so refresh doesn't lose the case. In-memory fallback for offline dev.
+5. **Frontend is read-only + triggers.** UI never calls Claude or Deepgram directly — only via backend routes.
 6. **Demo Mode is first-class.** A button that replays the scripted scenario via `transcript.segment` events at realistic timing. Test against Demo Mode before testing live mic.
 
 ---
@@ -315,27 +315,29 @@ Integration happens through the event bus, not function imports.
 | **Pipeline / Chain** | Safety and Research must run in parallel with Documentation |
 | **Monolithic orchestrator** | One person becomes bottleneck; merge conflicts |
 | **Microservices** | Deployment complexity kills demo stability |
-| **LangGraph / Agents SDK** | Extra abstraction layer; custom pub/sub is simpler for 3 devs |
+| **LangGraph / Agents SDK** | Extra abstraction layer; custom asyncio pub/sub is simpler |
 | **Band SDK** | Redis pub/sub already coordinates agents; don't add a second orchestrator |
 
 ---
 
-# Architecture (locked — no alternatives)
+# Architecture
 
 ## Stack
 
 | Layer | Choice |
 |-------|--------|
-| Frontend | Next.js 14 App Router, Tailwind, shadcn/ui |
-| Backend | Next.js API routes + WebSocket route (`/api/ws`) |
-| Event bus | Redis pub/sub |
-| State | Redis key-value per encounter |
-| LLM | Claude Sonnet (Anthropic SDK) |
+| Frontend | Next.js 15 App Router, Tailwind |
+| Backend | Python 3.11 · FastAPI · asyncio (port 8000) |
+| API bridge | Next.js rewrites proxy `/api/*` → FastAPI |
+| Event bus | Redis pub/sub (asyncio in-memory fallback) |
+| State | Redis key-value per encounter (in-memory fallback) |
+| Real-time UI | Server-Sent Events (`/api/events`) |
+| LLM | Claude Sonnet (Anthropic Python SDK) |
 | Voice | Deepgram streaming STT |
-| Research | Browserbase |
+| Research | PubMed E-utilities + curated mock citations |
 | Observability | Arize |
 
-Single repo. Single deploy (Vercel + Redis Cloud). No FastAPI. No LangGraph.
+Single repo. Frontend on Vercel, backend on a Python host (Render / Railway / fly.io) + Redis Cloud.
 
 ---
 
@@ -347,33 +349,39 @@ Persistent disclaimer banner at top: **"Demo only — not for clinical use."**
 
 ---
 
-## Backend
+## Backend (`backend/`)
 
-- `app/api/ws/route.ts` — WebSocket: subscribe to Redis, fan out to browser
-- `app/api/encounter/route.ts` — create encounter, trigger Demo Mode
-- `app/api/handoff/route.ts` — publish `handoff.requested`
-- `lib/agents/` — one file per agent, each exports a `subscribe()` function
-- `lib/redis.ts` — pub/sub client + state helpers
-- `lib/events.ts` — shared types
+- `main.py` — FastAPI app entry point; starts all agents on boot via lifespan hook
+- `routes/events.py` — `GET /api/events` — SSE stream; fan-out to all connected browsers
+- `routes/encounter.py` — `POST/GET/DELETE /api/encounter` — start, status, reset
+- `routes/transcript.py` — `POST /api/transcript` — ingest live transcript segments
+- `routes/handoff.py` — `POST /api/handoff` — publish `handoff.requested`
+- `routes/status.py` — `GET /api/status` — health check
+- `routes/deepgram.py` — `GET /api/deepgram` — Deepgram key proxy
+- `agents/` — one file per agent; each `async def start_*_agent(bus)` subscribes and returns an unsubscribe fn
+- `redis_layer/` — async Redis client, key conventions, state persistence
+- `sse/hub.py` — asyncio.Queue per SSE client; `broadcast_to_clients()` called by the event bus
+- `events.py` — shared dataclasses (Python equivalent of `lib/events.ts`)
 
 ---
 
 ## Agent Layer
 
-Custom orchestration only. Each agent is a module:
+Custom orchestration only. Each agent is a Python module:
 
 ```
-lib/agents/
-  transcription.ts   # Dev A
-  extraction.ts      # Dev B
-  timeline.ts        # Dev B
-  safety.ts          # Dev B
-  documentation.ts   # Dev C
-  research.ts        # Dev C
-  handoff.ts         # Dev C
+backend/agents/
+  extraction.py      # debounced on transcript.segment → facts.extracted
+  timeline.py        # facts.extracted → timeline.updated
+  safety.py          # facts.extracted → safety.flagged
+  documentation.py   # facts.extracted + timeline.updated → note.updated
+  research.py        # facts.extracted (new med/allergy) → research.completed
+  handoff.py         # handoff.requested → handoff.generated
 ```
 
-Each file: `export function startAgent(redis: RedisClient)` — subscribes to events, publishes results.
+Each file: `async def start_*_agent(bus) -> Callable` — subscribes to events, publishes results, returns an unsubscribe function.
+
+Claude prompts and heuristic fallbacks live in `backend/prompts/` (one file per agent).
 
 ---
 
@@ -437,9 +445,9 @@ Simulate shift change. Press "Generate Handoff Report." Show before (messy trans
 One slide or live diagram:
 
 ```
-Deepgram → Redis Event Bus → 6 Agents → WebSocket → Dashboard
+Deepgram → Redis Event Bus → 6 Agents → SSE /api/events → Dashboard
               ↕                ↕
-           Claude           Browserbase
+           Claude           PubMed / mock citations
               ↕
             Arize
 ```
@@ -456,8 +464,9 @@ Live mic fails. Demo Mode doesn't.
 
 - `scripts/demo-scenario.json` — scripted beats with `{ text, speaker, delayMs }`
 - Dashboard toggle: **Live** | **Demo**
-- Demo Mode publishes `transcript.segment` events through the same Redis pipeline
-- All agents, UI, and handoff work identically
+- `POST /api/encounter` with `{ "mode": "demo" }` triggers `backend/demo/injector.py`
+- Demo Mode publishes `transcript.segment` events through the same asyncio event bus
+- All agents, SSE fan-out, and handoff work identically
 
 ## Rules
 
