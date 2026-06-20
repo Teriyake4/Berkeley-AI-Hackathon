@@ -9,13 +9,15 @@ import asyncio
 import json
 import logging
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from agents.runtime import ensure_agents_started
+from agents.runtime import ensure_agents_started, stop_all_agents
 from bus import get_event_bus
 from demo.injector import is_demo_running, run_demo_scenario, stop_demo
 from events import EVENT_CHANNELS

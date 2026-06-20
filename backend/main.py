@@ -25,12 +25,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from agents.runtime import ensure_agents_started, stop_all_agents
-from routes.events import router as events_router
-from routes.encounter import router as encounter_router
-from routes.transcript import router as transcript_router
-from routes.handoff import router as handoff_router
-from routes.status import router as status_router
-from routes.deepgram import router as deepgram_router
+from routes import router as api_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -65,12 +60,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(events_router)
-app.include_router(encounter_router)
-app.include_router(transcript_router)
-app.include_router(handoff_router)
-app.include_router(status_router)
-app.include_router(deepgram_router)
+app.include_router(api_router)
 
 
 @app.get("/")
