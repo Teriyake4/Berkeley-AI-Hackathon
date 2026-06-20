@@ -4,6 +4,26 @@ Real-time AI clinical operations assistant — Berkeley AI Hackathon.
 
 ## Quick start
 
+### Option 1 — Docker Compose (recommended)
+
+Start all services with a single command:
+
+```bash
+cp .env.example .env               # add API keys (all optional — heuristics work offline)
+docker compose up --build
+```
+
+This launches:
+| Service | Port |
+|---------|------|
+| Next.js frontend | 3000 |
+| FastAPI backend | 8000 |
+| Redis | 6379 |
+
+Open [http://localhost:3000](http://localhost:3000) → click **Demo** → watch all agents work → **Generate Handoff Report**.
+
+### Option 2 — Manual setup
+
 Two terminals required — Python backend + Next.js frontend.
 
 **Terminal 1 — Python backend:**
@@ -19,8 +39,6 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 npm install
 npm run dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000) → click **Demo** → watch all agents work → **Generate Handoff Report**.
 
 ## Architecture
 
@@ -67,6 +85,7 @@ backend/                  # Python FastAPI backend (replaces lib/ + app/api/)
   prompts/                # Claude prompts + heuristic fallbacks
   demo/                   # Demo scenario replay
   routes/                 # FastAPI route handlers
+  Dockerfile              # Backend container image
 
 app/                      # Next.js frontend (UI only)
   page.tsx                # Main dashboard
@@ -76,12 +95,17 @@ components/               # React UI panels
 hooks/                    # useEncounterEvents (SSE client)
 scripts/
   demo-scenario.json      # Demo encounter dialogue script
+
+Dockerfile                # Frontend container image
+docker-compose.yml        # Orchestrate frontend, backend & Redis
 ```
 
 ## Scripts
 
 | Command | Description |
 |---------|-------------|
+| `docker compose up --build` | Start all services (frontend, backend, Redis) |
+| `docker compose down` | Stop all services |
 | `npm run dev` | Start Next.js frontend (port 3000) |
 | `npm run typecheck` | TypeScript check |
 | `uvicorn main:app --reload` | Start Python backend (run from `backend/`) |
