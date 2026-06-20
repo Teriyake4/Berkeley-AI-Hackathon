@@ -30,6 +30,8 @@ Open [http://localhost:3000](http://localhost:3000) → click **Demo** → watch
 
 ## Docs
 
+- [Teammate 1 — Platform & Pipeline](./docs/TEAMMATE_1.md)
+- [Teammate 2 — Agents, UI & Demo](./docs/TEAMMATE_2.md)
 - [Product plan](./ER_Copilot_Hackathon_Plan.md)
 - [Parallel build guide](./PARALLEL_BUILD.md)
 

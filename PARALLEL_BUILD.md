@@ -1,6 +1,8 @@
 # Parallel Build Guide
 
-Build all three tracks at once. **Phase 0 is blocking** — do it together in ~45 minutes. After that, devs rarely touch the same files.
+> **2-person team?** Start here → [Teammate 1 — Platform](./docs/TEAMMATE_1.md) · [Teammate 2 — Product](./docs/TEAMMATE_2.md)
+
+Build in parallel. **Phase 0 is blocking** — do it together in ~45 minutes. After that, devs rarely touch the same files.
 
 ---
 
@@ -167,6 +169,8 @@ See `.env.example`. Each dev only needs the keys for their track to start locall
 
 ## Quick links
 
+- [Teammate 1 — Platform & Pipeline](./docs/TEAMMATE_1.md)
+- [Teammate 2 — Agents, UI & Demo](./docs/TEAMMATE_2.md)
 - [Dev A — Voice & Bus](./docs/DEV_A.md)
 - [Dev B — Clinical Brain](./docs/DEV_B.md)
 - [Dev C — Output & UI](./docs/DEV_C.md)
