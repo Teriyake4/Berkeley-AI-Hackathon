@@ -197,6 +197,87 @@ Good sponsor alignment.
 
 ---
 
+# Design Pattern: Event-Driven Architecture (Pub/Sub)
+
+## Why This Pattern
+
+Three vibe coders building six agents in parallel will collide fast without a shared contract. **Event-Driven Architecture** gives everyone the same rule:
+
+> Agents don't call each other directly. They publish events. Other agents subscribe and react.
+
+This matches the product (clinical events happen continuously), the stack (Redis pub/sub + WebSocket fan-out), and the demo narrative ("collaborative AI workforce reacting in real time").
+
+---
+
+## Core Idea
+
+```
+Deepgram → transcript.segment
+              ↓
+         [Event Bus — Redis]
+         ↙    ↓    ↓    ↘
+   extraction  timeline  safety  documentation
+         ↓         ↓        ↓          ↓
+    facts.extracted  timeline.updated  safety.flagged  note.updated
+              ↓
+         [WebSocket → Frontend]
+```
+
+Every state change is an **event** with a typed payload. Agents are **dumb subscribers** — easy to vibe-code in isolation because the only contract is the event schema.
+
+---
+
+## Event Schema (MVP)
+
+Keep events small and versioned. Example types:
+
+| Event | Publisher | Payload |
+|-------|-----------|---------|
+| `transcript.segment` | Voice layer | `{ text, speaker, timestamp }` |
+| `facts.extracted` | Extraction agent | `{ entities: Medication[], Condition[], ... }` |
+| `timeline.updated` | Timeline agent | `{ events: TimelineEntry[] }` |
+| `safety.flagged` | Safety agent | `{ concern, severity, rationale }` |
+| `note.updated` | Documentation agent | `{ soap: { S, O, A, P } }` |
+| `handoff.requested` | Frontend | `{ encounterId }` |
+| `handoff.generated` | Handoff agent | `{ report: HandoffReport }` |
+
+Define these in one shared `events.ts` (or `events.py`) file on day one. Never change field names mid-hackathon — add new events instead.
+
+---
+
+## Three-Dev Split
+
+| Dev | Owns | Subscribes To | Publishes |
+|-----|------|---------------|-----------|
+| **Dev A — Voice & Ingest** | Deepgram integration, WebSocket server, event bus setup | — | `transcript.segment` |
+| **Dev B — Agent Brain** | Extraction, Timeline, Safety, Documentation agents | `transcript.segment` | `facts.extracted`, `timeline.updated`, `safety.flagged`, `note.updated` |
+| **Dev C — Dashboard** | Next.js UI, live panels, handoff button | All agent events (via WebSocket) | `handoff.requested` |
+
+Each dev can prompt AI against their slice without touching the others' code. Integration happens through the event bus, not function imports.
+
+---
+
+## Rules for Vibe Coding
+
+1. **No direct agent-to-agent imports.** If Agent B needs transcript data, subscribe to `transcript.segment` — don't import Agent A's module.
+2. **One shared event types file.** First commit of the hackathon. Everyone imports from it.
+3. **Idempotent handlers.** Events may replay; agents should upsert state, not append blindly.
+4. **Redis = source of truth.** Pub/sub for live updates; Redis keys for encounter state so a refresh doesn't lose the case.
+5. **Frontend is read-only + triggers.** UI never runs Claude or Deepgram — it publishes `handoff.requested` and renders whatever events arrive.
+
+---
+
+## Why Not Other Patterns
+
+| Pattern | Why Skip |
+|---------|----------|
+| **Pipeline / Chain** | Too rigid — Safety and Research agents need to run in parallel, not in sequence |
+| **Monolithic orchestrator** | One person becomes the bottleneck; merge conflicts on the orchestrator file |
+| **Microservices** | Overkill for 36 hours; deployment complexity kills demo stability |
+| **Blackboard** | Conceptually similar, but pub/sub *is* the blackboard mechanism here — use the clearer name |
+
+---
+
 # Architecture
 
 ## Frontend
