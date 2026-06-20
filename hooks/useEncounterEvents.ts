@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import type {
   Citation,
   EventEnvelope,
@@ -38,6 +38,8 @@ export interface EncounterState {
   handoff: HandoffReport | null;
   mode: "idle" | "demo" | "live";
   loading: boolean;
+  /** Which agents fired in the last 3s (for activity indicator) */
+  activeAgents: Set<string>;
 }
 
 const initialEntities: MedicalEntities = {
@@ -60,6 +62,7 @@ export const initialEncounterState: EncounterState = {
   handoff: null,
   mode: "idle",
   loading: false,
+  activeAgents: new Set(),
 };
 
 type Action =
@@ -68,6 +71,8 @@ type Action =
   | { type: "SET_MODE"; mode: EncounterState["mode"] }
   | { type: "SET_LOADING"; loading: boolean }
   | { type: "RESET" }
+  | { type: "AGENT_ACTIVE"; agent: string }
+  | { type: "AGENT_IDLE"; agent: string }
   | { type: "EVENT"; envelope: EventEnvelope };
 
 function reducer(state: EncounterState, action: Action): EncounterState {
@@ -81,7 +86,22 @@ function reducer(state: EncounterState, action: Action): EncounterState {
     case "SET_LOADING":
       return { ...state, loading: action.loading };
     case "RESET":
-      return { ...initialEncounterState, connected: state.connected, encounterId: state.encounterId };
+      return {
+        ...initialEncounterState,
+        connected: state.connected,
+        encounterId: state.encounterId,
+        activeAgents: new Set(),
+      };
+    case "AGENT_ACTIVE": {
+      const next = new Set(state.activeAgents);
+      next.add(action.agent);
+      return { ...state, activeAgents: next };
+    }
+    case "AGENT_IDLE": {
+      const next = new Set(state.activeAgents);
+      next.delete(action.agent);
+      return { ...state, activeAgents: next };
+    }
     case "EVENT":
       return applyEvent(state, action.envelope);
     default:
@@ -89,27 +109,51 @@ function reducer(state: EncounterState, action: Action): EncounterState {
   }
 }
 
+function agentForChannel(channel: string): string | null {
+  const map: Record<string, string> = {
+    [EVENT_CHANNELS.FACTS_EXTRACTED]: "extraction",
+    [EVENT_CHANNELS.TIMELINE_UPDATED]: "timeline",
+    [EVENT_CHANNELS.SAFETY_FLAGGED]: "safety",
+    [EVENT_CHANNELS.NOTE_UPDATED]: "documentation",
+    [EVENT_CHANNELS.RESEARCH_COMPLETED]: "research",
+    [EVENT_CHANNELS.HANDOFF_GENERATED]: "handoff",
+  };
+  return map[channel] ?? null;
+}
+
 function applyEvent(state: EncounterState, envelope: EventEnvelope): EncounterState {
+  // Mark the relevant agent as briefly active
+  const agent = agentForChannel(envelope.channel);
+  const activeAgents = new Set(state.activeAgents);
+  if (agent) activeAgents.add(agent);
+
   switch (envelope.channel) {
     case EVENT_CHANNELS.TRANSCRIPT_SEGMENT: {
       const p = envelope.payload as TranscriptSegmentPayload;
       return {
         ...state,
-        transcript: [...state.transcript, { speaker: p.speaker, text: p.text, timestamp: p.timestamp }],
+        activeAgents,
+        transcript: [
+          ...state.transcript,
+          { speaker: p.speaker, text: p.text, timestamp: p.timestamp },
+        ],
       };
     }
     case EVENT_CHANNELS.FACTS_EXTRACTED: {
       const p = envelope.payload as import("@/lib/events").FactsExtractedPayload;
-      return { ...state, entities: p.entities };
+      return { ...state, activeAgents, entities: p.entities };
     }
     case EVENT_CHANNELS.TIMELINE_UPDATED: {
       const p = envelope.payload as import("@/lib/events").TimelineUpdatedPayload;
-      return { ...state, timeline: p.events };
+      return { ...state, activeAgents, timeline: p.events };
     }
     case EVENT_CHANNELS.SAFETY_FLAGGED: {
       const p = envelope.payload as import("@/lib/events").SafetyFlaggedPayload;
+      const alreadyExists = state.safetyFlags.some((f) => f.concern === p.concern);
+      if (alreadyExists) return state;
       return {
         ...state,
+        activeAgents,
         safetyFlags: [...state.safetyFlags, p],
         timeline: [
           ...state.timeline,
@@ -124,12 +168,16 @@ function applyEvent(state: EncounterState, envelope: EventEnvelope): EncounterSt
     }
     case EVENT_CHANNELS.NOTE_UPDATED: {
       const p = envelope.payload as import("@/lib/events").NoteUpdatedPayload;
-      return { ...state, soap: p.soap };
+      return { ...state, activeAgents, soap: p.soap };
     }
     case EVENT_CHANNELS.RESEARCH_COMPLETED: {
       const p = envelope.payload as import("@/lib/events").ResearchCompletedPayload;
+      // Deduplicate by query
+      const alreadyExists = state.research.some((r) => r.query === p.query);
+      if (alreadyExists) return state;
       return {
         ...state,
+        activeAgents,
         research: [
           ...state.research,
           {
@@ -143,7 +191,7 @@ function applyEvent(state: EncounterState, envelope: EventEnvelope): EncounterSt
     }
     case EVENT_CHANNELS.HANDOFF_GENERATED: {
       const p = envelope.payload as import("@/lib/events").HandoffGeneratedPayload;
-      return { ...state, handoff: p.report, loading: false };
+      return { ...state, activeAgents, handoff: p.report, loading: false };
     }
     default:
       return state;
@@ -153,45 +201,89 @@ function applyEvent(state: EncounterState, envelope: EventEnvelope): EncounterSt
 export function useEncounterEvents() {
   const [state, dispatch] = useReducer(reducer, initialEncounterState);
   const sourceRef = useRef<EventSource | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const agentTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  useEffect(() => {
+  const connect = useCallback(() => {
+    if (sourceRef.current) {
+      sourceRef.current.close();
+      sourceRef.current = null;
+    }
+
     const source = new EventSource("/api/events");
     sourceRef.current = source;
 
-    source.onopen = () => dispatch({ type: "CONNECTED" });
-    source.onerror = () => dispatch({ type: "DISCONNECTED" });
+    source.onopen = () => {
+      dispatch({ type: "CONNECTED" });
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+    };
+
+    source.onerror = () => {
+      dispatch({ type: "DISCONNECTED" });
+      source.close();
+      sourceRef.current = null;
+      // Auto-reconnect after 3s
+      reconnectTimerRef.current = setTimeout(() => connect(), 3000);
+    };
 
     source.onmessage = (event) => {
       try {
-        const parsed = JSON.parse(event.data) as { channel: string; payload?: unknown };
+        const parsed = JSON.parse(event.data as string) as {
+          channel: string;
+          payload?: unknown;
+        };
         if (parsed.channel === "connected") return;
-        dispatch({ type: "EVENT", envelope: parsed as EventEnvelope });
+
+        const envelope = parsed as EventEnvelope;
+        dispatch({ type: "EVENT", envelope });
+
+        // Clear agent-active badge after 2.5s
+        const agent = agentForChannel(envelope.channel);
+        if (agent) {
+          const timers = agentTimersRef.current;
+          if (timers.has(agent)) clearTimeout(timers.get(agent)!);
+          timers.set(
+            agent,
+            setTimeout(() => dispatch({ type: "AGENT_IDLE", agent }), 2500)
+          );
+        }
       } catch {
         /* ignore parse errors */
       }
     };
+  }, []);
 
+  useEffect(() => {
+    connect();
     return () => {
-      source.close();
+      sourceRef.current?.close();
       sourceRef.current = null;
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      agentTimersRef.current.forEach((t) => clearTimeout(t));
     };
-  }, []);
+  }, [connect]);
 
-  const startEncounter = useCallback(async (mode: "demo" | "live") => {
-    dispatch({ type: "RESET" });
-    dispatch({ type: "SET_MODE", mode });
-    dispatch({ type: "SET_LOADING", loading: mode === "demo" });
+  const startEncounter = useCallback(
+    async (mode: "demo" | "live") => {
+      dispatch({ type: "RESET" });
+      dispatch({ type: "SET_MODE", mode });
+      dispatch({ type: "SET_LOADING", loading: mode === "demo" });
 
-    await fetch("/api/encounter", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode, encounterId: ENCOUNTER_ID }),
-    });
+      await fetch("/api/encounter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode, encounterId: ENCOUNTER_ID }),
+      });
 
-    if (mode === "demo") {
-      setTimeout(() => dispatch({ type: "SET_LOADING", loading: false }), 26000);
-    }
-  }, []);
+      if (mode === "demo") {
+        setTimeout(() => dispatch({ type: "SET_LOADING", loading: false }), 30000);
+      }
+    },
+    []
+  );
 
   const requestHandoff = useCallback(async () => {
     dispatch({ type: "SET_LOADING", loading: true });
@@ -210,25 +302,82 @@ export function useEncounterEvents() {
     });
   }, []);
 
-  const missingInfo = getMissingInfo(state.entities ?? initialEntities);
+  const missingInfo = useMemo(
+    () => getMissingInfo(state.entities ?? initialEntities, state.safetyFlags),
+    [state.entities, state.safetyFlags]
+  );
+
+  const suggestedFollowUps = useMemo(
+    () => getSuggestedFollowUps(state.entities ?? initialEntities, state.safetyFlags),
+    [state.entities, state.safetyFlags]
+  );
 
   return {
     state,
     missingInfo,
+    suggestedFollowUps,
     startEncounter,
     requestHandoff,
     pushTranscript,
   };
 }
 
-function getMissingInfo(entities: MedicalEntities): string[] {
+function getMissingInfo(
+  entities: MedicalEntities,
+  _safetyFlags: SafetyFlaggedPayload[]
+): string[] {
   const missing: string[] = [];
   if (!entities.demographics?.age) missing.push("Patient age");
-  if (entities.vitals && Object.keys(entities.vitals).length === 0)
-    missing.push("Vital signs");
-  if (!entities.symptoms.some((s) => s.includes("severity")))
-    missing.push("Pain severity (1-10)");
+  if (!entities.demographics?.sex) missing.push("Patient sex");
+  if (Object.keys(entities.vitals).length === 0) missing.push("Vital signs");
+  if (!entities.symptoms.some((s) => s.toLowerCase().includes("severity")))
+    missing.push("Pain severity (1–10)");
   if (entities.medications.some((m) => m.name.toLowerCase().includes("warfarin")))
     missing.push("Current INR");
+  if (
+    entities.symptoms.some((s) => s.includes("chest pain")) &&
+    !entities.vitals["bp"]
+  )
+    missing.push("Blood pressure");
   return missing;
+}
+
+function getSuggestedFollowUps(
+  entities: MedicalEntities,
+  safetyFlags: SafetyFlaggedPayload[]
+): string[] {
+  const suggestions: string[] = [];
+
+  const hasWarfarin = entities.medications.some((m) =>
+    m.name.toLowerCase().includes("warfarin")
+  );
+  const hasChestPain = entities.symptoms.some((s) => s.includes("chest pain"));
+  const hasHeartValve = entities.conditions.some((c) => c.includes("heart valve"));
+  const hasPenicillinAllergy = entities.allergies.some((a) =>
+    a.toLowerCase().includes("penicillin")
+  );
+  const highSeverityFlags = safetyFlags.filter((f) => f.severity === "high");
+
+  if (hasWarfarin) {
+    suggestions.push("What is your most recent INR reading?");
+    suggestions.push("When did you last take your warfarin?");
+  }
+  if (hasChestPain) {
+    suggestions.push("On a scale of 1–10, how would you rate the chest pain?");
+    suggestions.push("Did the chest pain start suddenly or gradually?");
+  }
+  if (hasHeartValve) {
+    suggestions.push("Do you have records of your last cardiology visit?");
+  }
+  if (hasPenicillinAllergy) {
+    suggestions.push("What reaction did you have to penicillin?");
+  }
+  if (highSeverityFlags.length > 0) {
+    suggestions.push("Has a cardiologist been contacted?");
+  }
+  if (entities.symptoms.some((s) => s.includes("arm"))) {
+    suggestions.push("Is the arm pain constant or intermittent?");
+  }
+
+  return suggestions.slice(0, 4);
 }

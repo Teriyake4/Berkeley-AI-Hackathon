@@ -1,27 +1,45 @@
-import type {
-  HandoffReport,
-  MedicalEntities,
-  TimelineEntry,
-} from "@/lib/events";
+import type { HandoffReport, MedicalEntities, SoapNote, TimelineEntry } from "@/lib/events";
 
-export const HANDOFF_SYSTEM = `You are a shift handoff report generator for demo purposes only.
-Return ONLY valid JSON:
+export const HANDOFF_SYSTEM = `You are generating a formal shift handoff report for an ER encounter. For demo purposes only — not for clinical use.
+
+Return ONLY a raw JSON object (no markdown):
 {
   "patientSummary": string,
-  "timeline": [{ "id": string, "timestamp": string, "summary": string }],
-  "currentMedications": [{ "name": string }],
+  "timeline": [{ "id": string, "timestamp": string, "summary": string, "source": "extraction" }],
+  "currentMedications": [{ "name": string, "dose"?: string }],
   "outstandingQuestions": string[],
   "recommendedActions": string[],
-  "generatedAt": string (ISO)
-}`;
+  "generatedAt": string
+}
+
+Requirements:
+- patientSummary: 2-3 sentence clinical summary including demographics, chief complaint, relevant PMH, key meds
+- timeline: chronological key events (max 8)
+- outstandingQuestions: specific unanswered clinical questions (e.g. "Current INR?")
+- recommendedActions: ordered, specific next steps for incoming clinician
+- generatedAt: current ISO timestamp`;
 
 export function buildHandoffPrompt(
   entities: MedicalEntities,
   timeline: TimelineEntry[],
   transcript: string,
-  soap: { subjective: string; assessment: string; plan: string } | null
+  soap: Partial<SoapNote> | null
 ): string {
-  return `Entities:\n${JSON.stringify(entities, null, 2)}\n\nTimeline:\n${JSON.stringify(timeline, null, 2)}\n\nSOAP:\n${JSON.stringify(soap, null, 2)}\n\nTranscript:\n${transcript}\n\nReturn handoff report JSON.`;
+  return [
+    "Entities:",
+    JSON.stringify(entities, null, 2),
+    "",
+    "Timeline:",
+    JSON.stringify(timeline, null, 2),
+    "",
+    "SOAP note:",
+    JSON.stringify(soap, null, 2),
+    "",
+    "Full transcript:",
+    transcript.slice(-3000),
+    "",
+    "Generate the structured handoff report JSON.",
+  ].join("\n");
 }
 
 export function heuristicHandoff(
@@ -30,21 +48,41 @@ export function heuristicHandoff(
 ): HandoffReport {
   const age = entities.demographics?.age ?? "?";
   const sex = entities.demographics?.sex ?? "patient";
+  const conditions = entities.conditions.join(", ") || "none documented";
+  const hasWarfarin = entities.medications.some((m) =>
+    m.name.toLowerCase().includes("warfarin")
+  );
+  const hasPenicillinAllergy = entities.allergies.some((a) =>
+    a.toLowerCase().includes("penicillin")
+  );
+  const symptoms = entities.symptoms.join(", ") || "acute symptoms";
+
+  const outstandingQuestions = [
+    hasWarfarin ? "Current INR value?" : null,
+    "Pain severity 1–10?",
+    "Prior cardiac workup / stress testing?",
+    hasWarfarin ? "Last warfarin dose and time?" : null,
+    "Family history of cardiac disease?",
+  ].filter(Boolean) as string[];
+
+  const recommendedActions = [
+    "Stat ECG — review for ST changes",
+    "Serial troponins (0h, 3h, 6h)",
+    "Cardiology consult stat",
+    hasWarfarin
+      ? "Check INR before initiating antiplatelet therapy — weigh bleed vs thrombosis risk"
+      : "Aspirin 325mg if no contraindications",
+    "IV access and continuous cardiac monitoring",
+    hasPenicillinAllergy ? "Confirm no penicillin/cephalosporin ordered (allergy documented)" : null,
+    "Portable CXR",
+  ].filter(Boolean) as string[];
 
   return {
-    patientSummary: `${age}-year-old ${sex} with ${entities.symptoms.join(", ") || "acute symptoms"}. PMH: ${entities.conditions.join(", ") || "none"}.`,
-    timeline,
+    patientSummary: `${age}-year-old ${sex} presenting with ${symptoms}. PMH: ${conditions}. Medications: ${entities.medications.map((m) => m.name).join(", ") || "none"}. Allergies: ${entities.allergies.join(", ") || "NKDA"}.`,
+    timeline: timeline.slice(-8),
     currentMedications: entities.medications,
-    outstandingQuestions: [
-      "Current INR?",
-      "Pain severity (1-10)?",
-      "Any prior cardiac interventions beyond documented history?",
-    ],
-    recommendedActions: [
-      "Stat ECG and troponin",
-      "Cardiology consult",
-      "Assess bleeding vs thrombotic risk before additional antiplatelet therapy",
-    ],
+    outstandingQuestions,
+    recommendedActions,
     generatedAt: new Date().toISOString(),
   };
 }

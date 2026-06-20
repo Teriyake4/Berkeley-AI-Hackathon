@@ -1,0 +1,16 @@
+# Redis (optional — uses in-memory fallback if unset)
+REDIS_URL=
+
+# Deepgram (optional — Live mode falls back to Web Speech API)
+DEEPGRAM_API_KEY=
+
+# Anthropic (optional — uses heuristic fallbacks if unset)
+ANTHROPIC_API_KEY=
+
+# Browserbase (optional — uses mock citations if unset)
+BROWSERBASE_API_KEY=
+BROWSERBASE_PROJECT_ID=
+
+# Arize (optional)
+ARIZE_SPACE_ID=
+ARIZE_API_KEY=

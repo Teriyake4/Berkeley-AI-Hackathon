@@ -1,5 +1,6 @@
 {
   "encounterId": "demo-encounter-001",
+  "description": "67M acute chest pain — designed to trigger all 6 agents during a 5-minute demo pitch",
   "beats": [
     {
       "id": "beat-1",
@@ -9,51 +10,63 @@
     },
     {
       "id": "beat-2",
-      "delayMs": 3000,
+      "delayMs": 4000,
       "speaker": "patient",
       "text": "I've had chest pain for about two hours. It started suddenly while I was gardening."
     },
     {
       "id": "beat-3",
-      "delayMs": 6000,
+      "delayMs": 9000,
       "speaker": "doctor",
       "text": "Can you tell me your age and any medical history?"
     },
     {
       "id": "beat-4",
-      "delayMs": 9000,
+      "delayMs": 13000,
       "speaker": "patient",
-      "text": "I'm 67. I have hypertension — been on lisinopril for years."
+      "text": "I'm 67 years old. I have hypertension — been on lisinopril for years."
     },
     {
       "id": "beat-5",
-      "delayMs": 12000,
+      "delayMs": 18000,
       "speaker": "doctor",
       "text": "Any other medications? Blood thinners?"
     },
     {
       "id": "beat-6",
-      "delayMs": 15000,
+      "delayMs": 22000,
       "speaker": "patient",
-      "text": "Yes, I take warfarin for a heart valve replacement."
+      "text": "Yes, I take warfarin for a heart valve replacement I had three years ago."
     },
     {
       "id": "beat-7",
-      "delayMs": 18000,
+      "delayMs": 28000,
       "speaker": "doctor",
       "text": "Any shortness of breath, nausea, or pain radiating to your arm or jaw?"
     },
     {
       "id": "beat-8",
-      "delayMs": 21000,
+      "delayMs": 33000,
       "speaker": "patient",
       "text": "A little short of breath, but no nausea. The pain does go to my left arm."
     },
     {
       "id": "beat-9",
-      "delayMs": 24000,
+      "delayMs": 39000,
       "speaker": "doctor",
-      "text": "We'll get an ECG and troponin right away. I'm going to start aspirin and consult cardiology."
+      "text": "Any allergies to medications we should know about?"
+    },
+    {
+      "id": "beat-10",
+      "delayMs": 43000,
+      "speaker": "patient",
+      "text": "I'm allergic to penicillin. Had a reaction years ago."
+    },
+    {
+      "id": "beat-11",
+      "delayMs": 49000,
+      "speaker": "doctor",
+      "text": "We'll get an ECG and troponin right away. I'm going to start aspirin and consult cardiology immediately."
     }
   ]
 }

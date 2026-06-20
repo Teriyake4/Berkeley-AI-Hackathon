@@ -1,5 +1,13 @@
 /**
  * Event bus — Redis when available, in-memory fallback otherwise.
+ *
+ * Design:
+ * - `broadcastToClients` (SSE fan-out) is called exactly once per publish,
+ *   directly in `publish()`. The Redis subscriber handler only dispatches to
+ *   local agent handlers — it does NOT re-broadcast, avoiding double SSE delivery.
+ * - Local agent handlers are always called directly in `publish()` for
+ *   zero-latency dispatch in the single-process hackathon setup. Redis pub/sub
+ *   is kept for state consistency and future multi-instance use.
  */
 
 import type { EventChannel, EventEnvelope, EventPayloadMap } from "./events";
@@ -32,7 +40,12 @@ function createInMemoryBus(): EventBus {
       broadcastToClients(envelope);
       const handlers = listeners.get(channel);
       if (!handlers) return;
-      await Promise.all([...handlers].map((h) => h(envelope)));
+      const results = [...handlers].map((h) =>
+        Promise.resolve().then(() => h(envelope)).catch((err) =>
+          console.error(`[bus] handler error on ${channel}:`, err)
+        )
+      );
+      await Promise.all(results);
     },
 
     async subscribe(channel, handler) {
@@ -50,34 +63,62 @@ function createRedisBus(): EventBus {
 
   if (!subscriber || !publisher) return createInMemoryBus();
 
-  subscriber.on("message", async (_channel, message) => {
+  // Only dispatch to local handlers — do NOT call broadcastToClients here.
+  // SSE broadcasting is handled exactly once in publish() below.
+  subscriber.on("message", async (_redisChannel, message) => {
     try {
       const envelope = JSON.parse(message) as EventEnvelope;
-      broadcastToClients(envelope);
       const handlers = localHandlers.get(envelope.channel);
       if (!handlers) return;
-      await Promise.all([...handlers].map((h) => h(envelope)));
+      const results = [...handlers].map((h) =>
+        Promise.resolve().then(() => h(envelope)).catch((err) =>
+          console.error(`[bus/redis] handler error on ${envelope.channel}:`, err)
+        )
+      );
+      await Promise.all(results);
     } catch (err) {
-      console.error("[bus] failed to handle message", err);
+      console.error("[bus/redis] failed to parse message:", err);
     }
+  });
+
+  subscriber.on("error", (err) => {
+    console.warn("[bus/redis] subscriber error:", err.message);
   });
 
   return {
     async publish(channel, payload) {
       const envelope = { channel, payload } as EventEnvelope;
+
+      // 1. Fan out to SSE clients immediately (single broadcast).
       broadcastToClients(envelope);
-      await publisher.publish(pubsubChannel(channel), JSON.stringify(envelope));
+
+      // 2. Dispatch to local agent handlers directly (no Redis round-trip latency).
       const handlers = localHandlers.get(channel);
       if (handlers) {
-        await Promise.all([...handlers].map((h) => h(envelope)));
+        const results = [...handlers].map((h) =>
+          Promise.resolve().then(() => h(envelope)).catch((err) =>
+            console.error(`[bus] handler error on ${channel}:`, err)
+          )
+        );
+        await Promise.all(results);
+      }
+
+      // 3. Publish to Redis for persistence / future multi-instance use.
+      try {
+        await publisher.publish(pubsubChannel(channel), JSON.stringify(envelope));
+      } catch (err) {
+        console.warn("[bus/redis] publish failed (continuing):", (err as Error).message);
       }
     },
 
     async subscribe(channel, handler) {
-      const redisChannel = pubsubChannel(channel);
       if (!localHandlers.has(channel)) {
         localHandlers.set(channel, new Set());
-        await subscriber.subscribe(redisChannel);
+        try {
+          await subscriber.subscribe(pubsubChannel(channel));
+        } catch (err) {
+          console.warn(`[bus/redis] subscribe failed for ${channel}:`, (err as Error).message);
+        }
       }
       localHandlers.get(channel)!.add(handler as EventHandler<EventChannel>);
       return () => localHandlers.get(channel)?.delete(handler as EventHandler<EventChannel>);
@@ -89,12 +130,15 @@ let busInstance: EventBus | null = null;
 
 export function getEventBus(): EventBus {
   if (!busInstance) {
-    busInstance =
-      process.env.REDIS_URL && getRedisPublisher()
-        ? createRedisBus()
-        : createInMemoryBus();
+    const pub = getRedisPublisher();
+    busInstance = pub ? createRedisBus() : createInMemoryBus();
   }
   return busInstance;
+}
+
+/** Resets the singleton — used in tests and hot-reload recovery. */
+export function resetEventBus(): void {
+  busInstance = null;
 }
 
 export { createInMemoryBus };

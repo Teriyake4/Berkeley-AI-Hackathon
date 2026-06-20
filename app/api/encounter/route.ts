@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ensureAgentsStarted } from "@/lib/agents/runtime";
 import { getEventBus } from "@/lib/bus";
-import { runDemoScenario, stopDemo } from "@/lib/demo/injector";
+import { runDemoScenario, stopDemo, isDemoRunning } from "@/lib/demo/injector";
 import { resetEncounter } from "@/lib/redis/state";
 import { ENCOUNTER_ID } from "@/lib/redis/keys";
 
@@ -20,11 +20,20 @@ export async function POST(request: Request) {
   if (mode === "demo") {
     const bus = getEventBus();
     runDemoScenario(bus, encounterId).catch((err) => {
-      if (err?.message !== "aborted") console.error("[demo]", err);
+      if (err?.message !== "aborted") console.error("[encounter] demo error:", err);
     });
   }
 
   return NextResponse.json({ encounterId, mode, status: "started" });
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const encounterId = searchParams.get("encounterId") ?? ENCOUNTER_ID;
+  return NextResponse.json({
+    encounterId,
+    demoRunning: isDemoRunning(encounterId),
+  });
 }
 
 export async function DELETE(request: Request) {
