@@ -122,7 +122,7 @@ export function HandoffModal({
               {/* Allergies — prominent */}
               <section className="mb-5">
                 <h4 className="text-xs font-bold text-red-600 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-                  <span>⚠</span> Allergies
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-600" /> Allergies
                 </h4>
                 {(report.allergies ?? []).length > 0 ? (
                   <div className="flex flex-wrap gap-2">
@@ -190,7 +190,7 @@ export function HandoffModal({
                         {m.name}
                         {m.dose ? ` — ${m.dose}` : ""}
                         <span className="ml-1.5 text-[10px] font-normal opacity-70">
-                          {m.source === "vision" ? "📷 camera" : "stated"}
+                          {m.source === "vision" ? "camera" : "stated"}
                         </span>
                       </span>
                     ))}
@@ -239,8 +239,8 @@ export function HandoffModal({
 
         {/* Footer disclaimer */}
         {report && (
-          <div className="px-6 py-2.5 border-t bg-amber-50 text-amber-800 text-xs text-center">
-            ⚠ Demo purposes only — not for clinical use. Always verify with a licensed clinician.
+          <div className="px-6 py-2.5 border-t border-amber-200 bg-amber-50 text-amber-800 text-xs text-center font-medium">
+            Demo purposes only — not for clinical use. Always verify with a licensed clinician.
           </div>
         )}
       </div>

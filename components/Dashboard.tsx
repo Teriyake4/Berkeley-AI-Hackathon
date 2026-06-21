@@ -230,7 +230,7 @@ export function Dashboard({ replayEncounterId }: { replayEncounterId?: string })
             <EntityChip key={c} label={c} color="slate" />
           ))}
           {state.entities.allergies.map((a) => (
-            <EntityChip key={a} label={`⚠ ${a} allergy`} color="signal" />
+            <EntityChip key={a} label={`${a} allergy`} color="signal" />
           ))}
         </div>
       )}
@@ -272,10 +272,7 @@ export function Dashboard({ replayEncounterId }: { replayEncounterId?: string })
       </main>
 
       {/* ── Footer ──────────────────────────────────────────────────────────── */}
-      <footer className="flex items-center justify-between gap-6 border-t border-[var(--line)] bg-ink-850/80 px-6 py-3">
-        <div className="min-w-0 flex-1">
-          <TelemetryBar phase={state.phase} />
-        </div>
+      <footer className="flex items-center justify-end gap-6 border-t border-[var(--line)] bg-ink-850/80 px-6 py-3">
         <button
           onClick={handleHandoff}
           disabled={state.transcript.length === 0}
