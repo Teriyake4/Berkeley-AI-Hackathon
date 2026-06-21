@@ -27,7 +27,7 @@ Rules:
 - Include every medication (including maintenance meds: lisinopril, warfarin, metoprolol, etc.)
 - Symptoms: include chief complaint, onset, duration, location, quality, radiation, and associated symptoms
 - Use ambulance context: paramedic, patient, bystander, scene — not ER/hospital terminology
-- Do NOT invent facts — only extract what was explicitly stated on scene
+- Do NOT invent facts — only extract what was explicitly stated on scene, do NOT make any assumptions
 - Idempotent merge: never drop previously extracted facts; only add new ones
 - Vitals: capture if spoken (BP, HR, SpO2, RR, GCS, temperature)"""
 
