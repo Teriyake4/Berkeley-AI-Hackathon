@@ -13,6 +13,7 @@ from claude import call_claude_json
 from events import (
     EVENT_CHANNELS,
     HandoffReport,
+    Medication,
     SoapNote,
     TimelineEntry,
     entities_from_dict,
@@ -65,6 +66,26 @@ async def start_handoff_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None]
                 recommendedActions=["Continue assessment."],
                 generatedAt=datetime.now(timezone.utc).isoformat(),
             )
+
+        # ── Enrich: prominent allergies + vision-identified meds with provenance ──
+        if entities and entities.allergies:
+            report.allergies = list(dict.fromkeys((report.allergies or []) + entities.allergies))
+
+        # Tag verbally-stated meds, then append camera-identified meds the ED should know about.
+        for m in report.currentMedications:
+            if not getattr(m, "source", None):
+                m.source = "stated"
+        existing_med_names = {m.name.lower() for m in report.currentMedications}
+        vision_raw = await load_json(EncounterKeys.vision_items(encounter_id)) or []
+        for item in vision_raw:
+            if not isinstance(item, dict):
+                continue
+            if item.get("captureType") != "vial_label":
+                continue
+            name = (item.get("identified") or "").strip()
+            if name and name.lower() not in existing_med_names:
+                report.currentMedications.append(Medication(name=name, source="vision"))
+                existing_med_names.add(name.lower())
 
         report.generatedAt = datetime.now(timezone.utc).isoformat()
         await save_json(EncounterKeys.handoff(encounter_id), to_dict(report))

@@ -27,6 +27,7 @@ class Medication:
     name: str
     dose: Optional[str] = None
     frequency: Optional[str] = None
+    source: Optional[str] = None  # "stated" | "vision"
 
 
 @dataclass
@@ -68,6 +69,7 @@ class HandoffReport:
     outstandingQuestions: List[str]
     recommendedActions: List[str]
     generatedAt: str  # ISO 8601
+    allergies: List[str] = field(default_factory=list)
 
 
 # ─── Event payloads ─────────────────────────────────────────────────────────────
@@ -200,7 +202,7 @@ def to_dict(obj: Any) -> Any:
 def entities_from_dict(d: Dict) -> MedicalEntities:
     if not d:
         return MedicalEntities()
-    meds = [Medication(**m) if isinstance(m, dict) else m for m in d.get("medications", [])]
+    meds = [_med_from_dict(m) for m in d.get("medications", [])]
     demo_raw = d.get("demographics")
     demo = Demographics(**demo_raw) if isinstance(demo_raw, dict) and demo_raw else None
     return MedicalEntities(
@@ -231,11 +233,23 @@ def soap_from_dict(d: Dict) -> SoapNote:
     )
 
 
+def _med_from_dict(m):
+    if not isinstance(m, dict):
+        return m
+    return Medication(
+        name=m.get("name", ""),
+        dose=m.get("dose"),
+        frequency=m.get("frequency"),
+        source=m.get("source"),
+    )
+
+
 def handoff_from_dict(d: Dict) -> HandoffReport:
     return HandoffReport(
         patientSummary=d.get("patientSummary", ""),
+        allergies=d.get("allergies", []),
         timeline=[timeline_entry_from_dict(e) for e in d.get("timeline", [])],
-        currentMedications=[Medication(**m) if isinstance(m, dict) else m for m in d.get("currentMedications", [])],
+        currentMedications=[_med_from_dict(m) for m in d.get("currentMedications", [])],
         outstandingQuestions=d.get("outstandingQuestions", []),
         recommendedActions=d.get("recommendedActions", []),
         generatedAt=d.get("generatedAt", ""),

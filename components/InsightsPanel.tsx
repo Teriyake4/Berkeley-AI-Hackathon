@@ -49,7 +49,11 @@ export function InsightsPanel({
   research: ResearchItem[];
   suggestedFollowUps: string[];
 }) {
-  const sortedFlags = [...safetyFlags].sort((a, b) => {
+  const NREMT_PREFIX = "NREMT gap:";
+  const realFlags = safetyFlags.filter((f) => !f.concern.startsWith(NREMT_PREFIX));
+  const nremtFlags = safetyFlags.filter((f) => f.concern.startsWith(NREMT_PREFIX));
+
+  const sortedFlags = [...realFlags].sort((a, b) => {
     const order = { critical: 0, high: 1, medium: 2, low: 3 };
     return order[a.severity] - order[b.severity];
   });
@@ -65,9 +69,9 @@ export function InsightsPanel({
         <section>
           <h3 className="text-xs font-semibold text-slate-500 uppercase mb-2 flex items-center gap-1.5">
             Safety Flags
-            {safetyFlags.length > 0 && (
+            {realFlags.length > 0 && (
               <span className="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold leading-none">
-                {safetyFlags.length}
+                {realFlags.length}
               </span>
             )}
           </h3>
@@ -119,6 +123,39 @@ export function InsightsPanel({
             })
           )}
         </section>
+
+        {/* NREMT Reminders */}
+        {nremtFlags.length > 0 && (
+          <section>
+            <h3 className="text-xs font-semibold text-slate-500 uppercase mb-2 flex items-center gap-1.5">
+              <span>📋</span>
+              NREMT Reminders
+              <span className="bg-amber-400 text-amber-900 text-xs rounded-full px-1.5 py-0.5 font-bold leading-none">
+                {nremtFlags.length}
+              </span>
+            </h3>
+            <ul className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+              {nremtFlags.map((flag, i) => (
+                <li
+                  key={i}
+                  className="flex items-start gap-2 text-sm text-slate-700 animate-fade-in"
+                >
+                  <span className="mt-0.5 shrink-0 text-amber-500">☐</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="leading-snug text-slate-700">
+                      {flag.concern.replace(NREMT_PREFIX, "").trim()}
+                    </p>
+                    {flag.rationale && (
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                        {flag.rationale}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* Missing Information */}
         {missingInfo.length > 0 && (
@@ -179,20 +216,26 @@ export function InsightsPanel({
                   {r.query}
                 </p>
                 <p className="text-sm text-slate-700 leading-relaxed mb-2">{r.findings}</p>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {r.citations.map((c, j) => (
-                    <a
-                      key={j}
-                      href={c.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-start gap-1.5 group"
-                    >
-                      <span className="text-clinical-400 mt-0.5 shrink-0 text-xs">↗</span>
-                      <span className="text-xs text-clinical-600 group-hover:underline leading-snug">
-                        {c.title}
-                      </span>
-                    </a>
+                    <div key={j} className="rounded-md bg-slate-50 border border-slate-100 px-2.5 py-1.5">
+                      <a
+                        href={c.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-start gap-1.5 group"
+                      >
+                        <span className="text-clinical-400 mt-0.5 shrink-0 text-xs">↗</span>
+                        <span className="text-xs font-medium text-clinical-700 group-hover:underline leading-snug">
+                          {c.title}
+                        </span>
+                      </a>
+                      {c.snippet && (
+                        <p className="text-[11px] text-slate-500 leading-snug mt-1 pl-4">
+                          {c.snippet}
+                        </p>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>

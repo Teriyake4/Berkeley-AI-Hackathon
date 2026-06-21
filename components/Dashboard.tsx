@@ -10,14 +10,17 @@ import { InsightsPanel } from "@/components/InsightsPanel";
 import { SoapPanel } from "@/components/SoapPanel";
 import { HandoffModal } from "@/components/HandoffModal";
 import { LiveMic } from "@/components/LiveMic";
+import { VisionCapture } from "@/components/VisionCapture";
+import { TelemetryBar } from "@/components/TelemetryBar";
 import type { MedicalEntities } from "@/types/events";
 
 const AGENT_LABELS: Record<string, string> = {
   extraction: "Extraction",
   timeline: "Timeline",
   safety: "Safety",
-  documentation: "SOAP",
+  documentation: "PCR",
   research: "Research",
+  vision: "Vision",
   handoff: "Handoff",
 };
 
@@ -36,10 +39,13 @@ export function Dashboard() {
       <DisclaimerBanner />
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="bg-clinical-900 text-white px-6 py-3 flex items-center justify-between shadow-md">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight">Nos</h1>
-          <p className="text-clinical-200 text-xs">AI Clinical Operations Assistant</p>
+      <header className="bg-ambulance-900 text-white px-6 py-3 flex items-center justify-between shadow-md">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl" aria-hidden>🚑</span>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">Nos</h1>
+            <p className="text-ambulance-200 text-xs">AI Paramedic Copilot — scene to hospital handoff</p>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -55,14 +61,14 @@ export function Dashboard() {
           </span>
 
           {/* Mode toggle */}
-          <div className="flex rounded-lg overflow-hidden border border-clinical-700">
+          <div className="flex rounded-lg overflow-hidden border border-ambulance-700">
             <button
               onClick={() => startEncounter("demo")}
               disabled={state.mode === "demo" && state.loading}
               className={`px-4 py-2 text-sm font-medium transition-colors ${
                 state.mode === "demo"
-                  ? "bg-clinical-500 text-white"
-                  : "bg-clinical-800 text-clinical-100 hover:bg-clinical-700"
+                  ? "bg-ambulance-500 text-white"
+                  : "bg-ambulance-800 text-ambulance-100 hover:bg-ambulance-700"
               }`}
             >
               {state.mode === "demo" && state.loading ? "Running…" : "Demo"}
@@ -71,8 +77,8 @@ export function Dashboard() {
               onClick={() => startEncounter("live")}
               className={`px-4 py-2 text-sm font-medium transition-colors ${
                 state.mode === "live"
-                  ? "bg-clinical-500 text-white"
-                  : "bg-clinical-800 text-clinical-100 hover:bg-clinical-700"
+                  ? "bg-ambulance-500 text-white"
+                  : "bg-ambulance-800 text-ambulance-100 hover:bg-ambulance-700"
               }`}
             >
               Live
@@ -161,24 +167,25 @@ export function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-          <SoapPanel soap={state.soap} />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <VisionCapture active />
+          </div>
+          <div className="lg:col-span-8 bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <SoapPanel soap={state.soap} />
+          </div>
         </div>
       </main>
 
       {/* ── Footer ──────────────────────────────────────────────────────────── */}
-      <footer className="px-6 py-3 border-t bg-white flex items-center justify-between">
-        <p className="text-sm text-slate-500">
-          {state.mode === "idle"
-            ? "Select Demo or Live to begin an encounter"
-            : state.mode === "demo"
-            ? `Demo encounter — ${state.transcript.length} transcript lines`
-            : `Live encounter — ${state.transcript.length} transcript lines`}
-        </p>
+      <footer className="px-6 py-3 border-t bg-white flex items-center justify-between gap-6">
+        <div className="flex-1 min-w-0">
+          <TelemetryBar phase={state.phase} />
+        </div>
         <button
           onClick={handleHandoff}
           disabled={state.transcript.length === 0}
-          className="px-6 py-2.5 rounded-lg bg-clinical-600 text-white font-semibold text-sm hover:bg-clinical-700 active:bg-clinical-800 disabled:opacity-40 disabled:cursor-not-allowed shadow-md transition-colors"
+          className="px-6 py-2.5 rounded-lg bg-ambulance-600 text-white font-semibold text-sm hover:bg-ambulance-700 active:bg-ambulance-800 disabled:opacity-40 disabled:cursor-not-allowed shadow-md transition-colors shrink-0"
         >
           Generate Handoff Report
         </button>

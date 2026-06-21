@@ -17,6 +17,7 @@ Summarise everything documented during the ambulance scene and transport for the
 Return ONLY a raw JSON object (no markdown):
 {
   "patientSummary": string,
+  "allergies": string[],
   "timeline": [{ "id": string, "timestamp": string, "summary": string, "source": "extraction" }],
   "currentMedications": [{ "name": string, "dose"?: string }],
   "outstandingQuestions": string[],
@@ -26,6 +27,7 @@ Return ONLY a raw JSON object (no markdown):
 
 Requirements:
 - patientSummary: 2-3 sentences — demographics, chief complaint, ALLERGIES (always include even if NKDA), relevant PMH, anticoagulation status
+- allergies: list every documented drug/substance allergy as an array (empty array if none stated)
 - timeline: GPS-anchored chronological events from scene to arrival (max 8); include telemetry and vision scan entries
 - outstandingQuestions: specific unanswered clinical questions (e.g. "Current INR?", "Last oral intake?")
 - recommendedActions: ordered next steps for the ED team; anticoagulation check before any antiplatelet recommendation

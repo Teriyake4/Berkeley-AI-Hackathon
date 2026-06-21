@@ -15,9 +15,20 @@ import type {
 import { EVENT_CHANNELS } from "@/types/events";
 import { ENCOUNTER_ID } from "@/types/constants";
 
+/** Console = synthetic line injected when the vision agent identifies something. */
+export type TranscriptSpeaker = Speaker | "console";
+
 export interface TranscriptLine {
-  speaker: Speaker;
+  speaker: TranscriptSpeaker;
   text: string;
+  timestamp: string;
+}
+
+export type EncounterPhase = "idle" | "scene" | "en_route" | "hospital";
+
+export interface VisionItem {
+  identified: string;
+  captureType: string;
   timestamp: string;
 }
 
@@ -36,6 +47,10 @@ export interface EncounterState {
     completedAt: string;
   }>;
   handoff: HandoffReport | null;
+  /** Items identified by the camera/vision agent (stated vs camera provenance). */
+  visionItems: VisionItem[];
+  /** Encounter location phase, derived from telemetry events. */
+  phase: EncounterPhase;
   mode: "idle" | "demo" | "live";
   loading: boolean;
   /** Which agents fired in the last 3s (for activity indicator) */
@@ -60,6 +75,8 @@ export const initialEncounterState: EncounterState = {
   soap: null,
   research: [],
   handoff: null,
+  visionItems: [],
+  phase: "idle",
   mode: "idle",
   loading: false,
   activeAgents: new Set(),
@@ -117,8 +134,20 @@ function agentForChannel(channel: string): string | null {
     [EVENT_CHANNELS.NOTE_UPDATED]: "documentation",
     [EVENT_CHANNELS.RESEARCH_COMPLETED]: "research",
     [EVENT_CHANNELS.HANDOFF_GENERATED]: "handoff",
+    [EVENT_CHANNELS.VISION_CAPTURED]: "vision",
   };
   return map[channel] ?? null;
+}
+
+const TELEMETRY_PHASE: Record<string, EncounterPhase> = {
+  scene_arrival: "scene",
+  patient_contact: "scene",
+  en_route: "en_route",
+  hospital_arrival: "hospital",
+};
+
+function humanize(event: string): string {
+  return event.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function applyEvent(state: EncounterState, envelope: EventEnvelope): EncounterState {
@@ -194,6 +223,75 @@ function applyEvent(state: EncounterState, envelope: EventEnvelope): EncounterSt
     case EVENT_CHANNELS.HANDOFF_GENERATED: {
       const p = envelope.payload as import("@/types/events").HandoffGeneratedPayload;
       return { ...state, activeAgents, handoff: p.report, loading: false };
+    }
+    case EVENT_CHANNELS.TELEMETRY_UPDATED: {
+      const p = envelope.payload as import("@/types/events").TelemetryUpdatedPayload;
+      const phase = TELEMETRY_PHASE[p.event] ?? state.phase;
+      const summary = p.label
+        ? `${humanize(p.event)} — ${p.label}`
+        : humanize(p.event);
+      return {
+        ...state,
+        phase,
+        timeline: [
+          ...state.timeline,
+          {
+            id: `telemetry-${p.event}-${p.timestamp}`,
+            timestamp: p.timestamp,
+            summary,
+            source: "telemetry" as const,
+          },
+        ],
+      };
+    }
+    case EVENT_CHANNELS.AUDIO_EVENT: {
+      const p = envelope.payload as import("@/types/events").AudioEventPayload;
+      const summary = p.detail ? `${humanize(p.type)} — ${p.detail}` : humanize(p.type);
+      return {
+        ...state,
+        timeline: [
+          ...state.timeline,
+          {
+            id: `audio-${p.type}-${p.timestamp}`,
+            timestamp: p.timestamp,
+            summary,
+            source: "audio" as const,
+          },
+        ],
+      };
+    }
+    case EVENT_CHANNELS.VISION_CAPTURED: {
+      const p = envelope.payload as import("@/types/events").VisionCapturedPayload;
+      // Dedupe identical captures
+      if (state.visionItems.some((v) => v.identified === p.identified)) {
+        return { ...state, activeAgents };
+      }
+      return {
+        ...state,
+        activeAgents,
+        visionItems: [
+          ...state.visionItems,
+          { identified: p.identified, captureType: p.captureType, timestamp: p.timestamp },
+        ],
+        // Inject an ambient "Console" line into the same scrolling transcript
+        transcript: [
+          ...state.transcript,
+          {
+            speaker: "console" as const,
+            text: `Observing — ${p.identified} identified.`,
+            timestamp: p.timestamp,
+          },
+        ],
+        timeline: [
+          ...state.timeline,
+          {
+            id: `vision-${p.timestamp}`,
+            timestamp: p.timestamp,
+            summary: `Vision: ${p.identified} identified`,
+            source: "vision" as const,
+          },
+        ],
+      };
     }
     default:
       return state;

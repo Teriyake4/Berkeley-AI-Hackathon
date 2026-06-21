@@ -26,6 +26,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from agents.runtime import ensure_agents_started, stop_all_agents
 from routes import router as api_router
+from routes.vision import router as vision_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -53,7 +54,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Nos API",
-    description="Real-time AI clinical operations assistant backend",
+    description="Real-time prehospital AI assistant backend — scene to hospital handoff",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -68,6 +69,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+app.include_router(vision_router)
 
 
 @app.get("/")

@@ -42,7 +42,7 @@ export function HandoffModal({
         {/* Header */}
         <div className="px-6 py-4 border-b flex items-center justify-between bg-clinical-900 text-white rounded-t-2xl">
           <div>
-            <h2 className="text-lg font-bold">Shift Handoff Report</h2>
+            <h2 className="text-lg font-bold">Ambulance → Hospital Handoff</h2>
             {report?.generatedAt && (
               <p className="text-xs text-clinical-300 mt-0.5">
                 Generated {new Date(report.generatedAt).toLocaleString()}
@@ -104,7 +104,7 @@ export function HandoffModal({
             <div className="md:flex-1 p-6 overflow-y-auto">
               <h3 className="text-xs font-bold text-clinical-700 uppercase tracking-wide mb-4 flex items-center gap-2">
                 <span className="bg-clinical-600 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">AFTER</span>
-                Structured Handoff
+                Structured Handoff for Receiving ED
               </h3>
 
               {/* Patient summary */}
@@ -115,6 +115,27 @@ export function HandoffModal({
                 <p className="text-sm text-slate-700 leading-relaxed bg-clinical-50 border border-clinical-100 rounded-lg p-3">
                   {report.patientSummary}
                 </p>
+              </section>
+
+              {/* Allergies — prominent */}
+              <section className="mb-5">
+                <h4 className="text-xs font-bold text-red-600 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                  <span>⚠</span> Allergies
+                </h4>
+                {(report.allergies ?? []).length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {(report.allergies ?? []).map((a, i) => (
+                      <span
+                        key={i}
+                        className="text-xs bg-red-100 text-red-800 border border-red-300 rounded-full px-3 py-1 font-bold capitalize"
+                      >
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500 italic">NKDA (no known drug allergies)</p>
+                )}
               </section>
 
               {/* Timeline */}
@@ -158,10 +179,17 @@ export function HandoffModal({
                     {report.currentMedications.map((m, i) => (
                       <span
                         key={i}
-                        className="text-xs bg-blue-50 text-blue-800 border border-blue-200 rounded-full px-3 py-1 font-medium capitalize"
+                        className={`text-xs rounded-full px-3 py-1 font-medium capitalize border ${
+                          m.source === "vision"
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                            : "bg-blue-50 text-blue-800 border-blue-200"
+                        }`}
                       >
                         {m.name}
                         {m.dose ? ` — ${m.dose}` : ""}
+                        <span className="ml-1.5 text-[10px] font-normal opacity-70">
+                          {m.source === "vision" ? "📷 camera" : "stated"}
+                        </span>
                       </span>
                     ))}
                   </div>
@@ -220,17 +248,28 @@ export function HandoffModal({
 
 function buildPlainText(report: HandoffReport): string {
   const lines: string[] = [
-    "SHIFT HANDOFF REPORT",
+    "AMBULANCE → HOSPITAL HANDOFF REPORT",
     `Generated: ${new Date(report.generatedAt).toLocaleString()}`,
     "",
     "PATIENT SUMMARY",
     report.patientSummary,
     "",
+    "ALLERGIES",
+    (report.allergies ?? []).length > 0
+      ? (report.allergies ?? []).map((a) => `  ! ${a}`).join("\n")
+      : "  NKDA (no known drug allergies)",
+    "",
   ];
 
   if (report.currentMedications.length > 0) {
     lines.push("CURRENT MEDICATIONS");
-    report.currentMedications.forEach((m) => lines.push(`  - ${m.name}${m.dose ? ` (${m.dose})` : ""}`));
+    report.currentMedications.forEach((m) =>
+      lines.push(
+        `  - ${m.name}${m.dose ? ` (${m.dose})` : ""}${
+          m.source === "vision" ? " [camera-identified]" : ""
+        }`
+      )
+    );
     lines.push("");
   }
 

@@ -36,6 +36,7 @@ async def ensure_agents_started() -> None:
         from agents.documentation import start_documentation_agent
         from agents.research import start_research_agent
         from agents.handoff import start_handoff_agent
+        from agents.vision import start_vision_agent
         from agents.audio_events import start_audio_events_agent
 
         bus = get_event_bus()
@@ -46,6 +47,7 @@ async def ensure_agents_started() -> None:
             start_documentation_agent(bus),
             start_research_agent(bus),
             start_handoff_agent(bus),
+            start_vision_agent(bus),
             start_audio_events_agent(bus),
         )
         _stop_fns.extend(stops)
