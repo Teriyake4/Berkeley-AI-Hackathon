@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useEncounterEvents } from "@/hooks/useEncounterEvents";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
+import { SafetyAlertBanner } from "@/components/SafetyAlertBanner";
 import { TranscriptPanel } from "@/components/TranscriptPanel";
 import { TimelinePanel } from "@/components/TimelinePanel";
 import { InsightsPanel } from "@/components/InsightsPanel";
@@ -120,7 +121,15 @@ export function Dashboard() {
             <EntityChip key={s} label={s} color="amber" />
           ))}
           {state.entities.medications.map((m) => (
-            <EntityChip key={m.name} label={m.name} color="blue" />
+            <EntityChip
+              key={m.name}
+              label={
+                m.dose?.includes("administered")
+                  ? `💉 ${m.name} (given on scene)`
+                  : m.name
+              }
+              color={m.dose?.includes("administered") ? "red" : "blue"}
+            />
           ))}
           {state.entities.conditions.map((c) => (
             <EntityChip key={c} label={c} color="slate" />
@@ -130,6 +139,8 @@ export function Dashboard() {
           ))}
         </div>
       )}
+
+      <SafetyAlertBanner safetyFlags={state.safetyFlags} entities={state.entities} />
 
       {/* ── Main panels ─────────────────────────────────────────────────────── */}
       <main className="flex-1 p-4 grid grid-rows-[1fr_auto] gap-4 overflow-hidden">

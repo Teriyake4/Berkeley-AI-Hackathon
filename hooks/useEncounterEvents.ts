@@ -149,7 +149,9 @@ function applyEvent(state: EncounterState, envelope: EventEnvelope): EncounterSt
     }
     case EVENT_CHANNELS.SAFETY_FLAGGED: {
       const p = envelope.payload as import("@/types/events").SafetyFlaggedPayload;
-      const alreadyExists = state.safetyFlags.some((f) => f.concern === p.concern);
+      const alreadyExists = state.safetyFlags.some(
+        (f) => f.concern.toLowerCase() === p.concern.toLowerCase()
+      );
       if (alreadyExists) return state;
       return {
         ...state,
@@ -353,11 +355,16 @@ function getSuggestedFollowUps(
   );
   const hasChestPain = entities.symptoms.some((s) => s.includes("chest pain"));
   const hasHeartValve = entities.conditions.some((c) => c.includes("heart valve"));
-  const hasPenicillinAllergy = entities.allergies.some((a) =>
-    a.toLowerCase().includes("penicillin")
-  );
   const highSeverityFlags = safetyFlags.filter((f) => f.severity === "high");
 
+  const hasAnyAllergy = entities.allergies.length > 0;
+
+  if (hasAnyAllergy) {
+    suggestions.push("Confirm no ordered medications or foods contain known allergens");
+    for (const allergy of entities.allergies.slice(0, 2)) {
+      suggestions.push(`What reaction does the patient have to ${allergy}?`);
+    }
+  }
   if (hasWarfarin) {
     suggestions.push("What is your most recent INR reading?");
     suggestions.push("When did you last take your warfarin?");
@@ -368,9 +375,6 @@ function getSuggestedFollowUps(
   }
   if (hasHeartValve) {
     suggestions.push("Do you have records of your last cardiology visit?");
-  }
-  if (hasPenicillinAllergy) {
-    suggestions.push("What reaction did you have to penicillin?");
   }
   if (highSeverityFlags.length > 0) {
     suggestions.push("Has a cardiologist been contacted?");

@@ -37,6 +37,13 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Start all agents on server boot; stop them on shutdown."""
+    from bus import reset_event_bus
+    from redis_layer.client import ping_redis
+
+    if os.environ.get("REDIS_URL"):
+        if not await ping_redis():
+            reset_event_bus()
+
     await ensure_agents_started()
     logger.info("[main] Nos Python backend ready")
     yield

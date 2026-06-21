@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Optional
 
 from events import MedicalEntities, Severity
 
@@ -66,6 +66,7 @@ THINK LIKE A SENIOR EMERGENCY PHYSICIAN reviewing the full chart before the pati
 - Every condition: what drugs are contraindicated? What complications should be watched for?
 - Every allergy: what could plausibly be administered on scene that would trigger a reaction?
 - Every injury or significant symptom: how does it interact with existing medications and conditions?
+- Unstable limb trauma (partial detachment, open fracture, limb swinging/dangling): NEVER shake, twist, or aggressively manipulate — immobilize in found position
 - Vision scan findings: do any identified substances conflict with known meds, allergies, or conditions?
 - The trajectory: are there risks in how this patient will be received at the ED?
 - Missing information: is there something unknown that could be critical (e.g. INR unknown for anticoagulated patient)?
@@ -73,6 +74,39 @@ THINK LIKE A SENIOR EMERGENCY PHYSICIAN reviewing the full chart before the pati
 Use the research briefs to inform your reasoning — they contain known risks, interactions, and contraindications for each identified entity. Do not limit yourself to the examples in the briefs; reason beyond them.
 
 Be comprehensive — it is better to flag something the paramedic dismisses than to miss something grave."""
+
+
+_VALID_SEVERITIES = frozenset({"low", "medium", "high", "critical"})
+
+
+def parse_safety_flag(item: object) -> Optional[SafetyResult]:
+    """Parse one LLM flag item, ignoring extra fields like sourceEntities."""
+    if isinstance(item, SafetyResult):
+        return item
+    if not isinstance(item, dict):
+        return None
+    concern = item.get("concern")
+    if not concern or not isinstance(concern, str):
+        return None
+    severity = item.get("severity", "medium")
+    if severity not in _VALID_SEVERITIES:
+        severity = "medium"
+    return SafetyResult(
+        concern=concern,
+        severity=severity,
+        rationale=str(item.get("rationale") or ""),
+        clarifyingQuestion=item.get("clarifyingQuestion"),
+        recommendedActions=item.get("recommendedActions"),
+    )
+
+
+def parse_safety_flags_from_llm(items: list) -> List[SafetyResult]:
+    flags: List[SafetyResult] = []
+    for item in items:
+        parsed = parse_safety_flag(item)
+        if parsed:
+            flags.append(parsed)
+    return flags
 
 
 def build_safety_prompt(
@@ -88,8 +122,8 @@ def build_safety_prompt(
     if transcript.strip():
         parts += [
             "",
-            "=== SCENE TRANSCRIPT (last 2000 chars) ===",
-            transcript[-2000:],
+            "=== SCENE TRANSCRIPT (last 4000 chars) ===",
+            transcript[-4000:],
         ]
     if research_briefs:
         parts += ["", "=== CLINICAL RESEARCH BRIEFS (generated for each identified entity) ==="]
@@ -124,6 +158,49 @@ def _allergen_stem(name: str) -> str:
     if token.endswith("s") and len(token) > 3:
         return token[:-1]
     return token
+
+
+# Canonical display names for common allergens (dedupes tylenol / Tylenol / acetaminophen)
+ALLERGEN_CANONICAL: dict[str, str] = {
+    "tylenol": "Tylenol",
+    "acetaminophen": "Tylenol",
+    "penicillin": "Penicillin",
+    "sulfa": "Sulfa",
+    "aspirin": "Aspirin",
+    "ibuprofen": "Ibuprofen",
+    "advil": "Ibuprofen",
+    "motrin": "Ibuprofen",
+    "nsaids": "NSAIDs",
+    "latex": "Latex",
+    "morphine": "Morphine",
+    "codeine": "Codeine",
+}
+
+
+def canonical_allergen(name: str) -> str:
+    key = name.lower().strip()
+    return ALLERGEN_CANONICAL.get(key, name.strip().title())
+
+
+def allergy_alert_concern(allergen: str) -> str:
+    display = canonical_allergen(allergen)
+    return f"ALLERGY ALERT: {display} — verify before any administration"
+
+
+def allergy_alert_rationale(allergen: str) -> str:
+    display = canonical_allergen(allergen)
+    return (
+        f"Patient has stated allergy to {display}. "
+        "Confirm all medications, foods, and treatments are safe before administration. "
+        f"Do NOT give {display} or related agents."
+    )
+
+
+def concern_dedupe_key(concern: str) -> str:
+    """Case-insensitive dedupe for allergy alerts; exact match otherwise."""
+    if concern.upper().startswith("ALLERGY ALERT:"):
+        return concern.lower()
+    return concern
 
 
 def _allergen_in_text(allergen: str, text: str) -> bool:
@@ -176,6 +253,102 @@ def heuristic_allergy_flags(
                         "Verify compatibility before administration."
                     ),
                 ))
+
+    return flags
+
+
+_SEVERE_LIMB_TRAUMA = (
+    "partially detached", "partial detachment", "partially attached",
+    "very broken", "badly broken", "badly fractured", "compound fracture",
+    "open fracture", "bone sticking", "bone protruding", "bone sticking out",
+    "swinging around", "swinging", "dangling", "hanging loose", "hanging off",
+    "almost amputat", "nearly severed", "nearly detached",
+    "unstable fracture", "limb is detached", "leg is detached", "arm is detached",
+)
+
+_DANGEROUS_LIMB_MANEUVER = (
+    "violently shak", "violent shak", "shaking it", "shake it", "shake the",
+    "twist it", "twisting it", "twist the", "wiggle it", "wiggling",
+    "move it around", "bend it", "bending it", "straighten it",
+    "pull on it", "pulling on", "yank", "yanking",
+    "test if it's okay", "test if it is okay", "test if its okay",
+    "test by shak", "test by mov", "test by twist", "test by bend",
+    "see if it's okay", "see if it moves", "manipulat",
+)
+
+
+def _text_indicates_severe_limb_trauma(text: str) -> bool:
+    lower = text.lower()
+    if any(p in lower for p in _SEVERE_LIMB_TRAUMA):
+        return True
+    if "detached" in lower and any(w in lower for w in ("leg", "arm", "limb", "foot", "ankle")):
+        return True
+    if "broken" in lower and any(w in lower for w in ("leg", "arm", "limb", "bone", "ankle", "femur")):
+        return True
+    return False
+
+
+def _text_indicates_dangerous_limb_maneuver(text: str) -> bool:
+    lower = text.lower()
+    if any(p in lower for p in _DANGEROUS_LIMB_MANEUVER):
+        return True
+    if "shake" in lower and any(w in lower for w in ("leg", "arm", "limb", " it", "this", "that")):
+        return True
+    if "test if" in lower and any(w in lower for w in ("okay", "ok", "stable", "broken", "move")):
+        return True
+    return False
+
+
+def check_trauma_procedure_risks(
+    symptoms: List[str],
+    transcript: str = "",
+) -> List[SafetyResult]:
+    """Flag unstable limb injuries and dangerous assessment/manipulation on scene."""
+    flags: List[SafetyResult] = []
+    combined = f"{' '.join(symptoms)} {transcript}".strip()
+    if not combined:
+        return flags
+
+    has_severe = _text_indicates_severe_limb_trauma(combined)
+    if not has_severe:
+        return flags
+
+    has_maneuver = _text_indicates_dangerous_limb_maneuver(transcript)
+
+    if has_maneuver:
+        flags.append(SafetyResult(
+            concern="CRITICAL: Dangerous manipulation proposed for unstable limb injury",
+            severity="critical",
+            rationale=(
+                "Patient has described an unstable or severely injured limb (partial detachment, "
+                "gross deformity, or limb swinging/dangling). Paramedic dialogue proposes shaking, "
+                "twisting, or other aggressive movement. STOP — this risks complete vascular "
+                "disruption, hemorrhage, nerve damage, and conversion to amputation. "
+                "Immobilize in found position; do not test stability by manipulation."
+            ),
+            recommendedActions=[
+                "Stop all manipulation of the injured limb immediately",
+                "Immobilize in the position found with padded splints above and below the injury",
+                "Assess distal pulses, motor function, and sensation without moving the limb",
+                "Control external bleeding with direct pressure — avoid tourniquet unless life-threatening hemorrhage",
+                "Notify receiving ED of suspected unstable fracture or partial amputation",
+            ],
+        ))
+    else:
+        flags.append(SafetyResult(
+            concern="Unstable limb injury — immobilize and avoid manipulation",
+            severity="high",
+            rationale=(
+                "Scene dialogue indicates an unstable or severely injured limb (partial detachment, "
+                "gross deformity, or limb swinging/dangling). Minimize movement; splint in found position "
+                "and assess neurovascular status distally without manipulating the injury."
+            ),
+            recommendedActions=[
+                "Splint the limb in the position found — do not attempt to straighten or test range of motion",
+                "Check distal pulses, capillary refill, motor function, and sensation before and after splinting",
+                "Avoid unnecessary movement during extrication and transport",
+            ],
+        ))
 
     return flags
 
@@ -248,6 +421,9 @@ def heuristic_safety(entities: MedicalEntities, transcript: str = "") -> List[Sa
 
     # Situational risks: injuries, scene context, vitals + medications
     flags.extend(check_situational_risks(meds, entities.symptoms, entities.conditions, transcript))
+
+    # Unstable limb trauma and dangerous manipulation on scene
+    flags.extend(check_trauma_procedure_risks(entities.symptoms, transcript))
 
     if has_penicillin_allergy:
         flags.append(SafetyResult(

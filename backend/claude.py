@@ -42,6 +42,10 @@ def has_llm() -> bool:
     return has_claude() or has_nim()
 
 
+def _claude_model() -> str:
+    return os.environ.get("ANTHROPIC_MODEL", "claude-haiku-4-5")
+
+
 async def _call_claude_json(system: str, user: str, agent_name: str) -> Optional[Any]:
     client = _get_client()
     if not client:
@@ -52,7 +56,7 @@ async def _call_claude_json(system: str, user: str, agent_name: str) -> Optional
     for attempt in range(2):
         try:
             response = await client.messages.create(
-                model="claude-sonnet-4-6",
+                model=_claude_model(),
                 max_tokens=2048,
                 system=full_system,
                 messages=[{"role": "user", "content": user}],

@@ -89,8 +89,19 @@ def heuristic_extract(transcript: str, existing: Optional[MedicalEntities]) -> M
         add_med("heparin")
     if "nitroglycerin" in lower or "nitro" in lower:
         add_med("nitroglycerin")
+    if "ibuprofen" in lower or "advil" in lower or "motrin" in lower:
+        add_med("ibuprofen")
+    if "naproxen" in lower or "aleve" in lower:
+        add_med("naproxen")
+    if "acetaminophen" in lower or "tylenol" in lower:
+        add_med("acetaminophen")
+    if "ketorolac" in lower or "toradol" in lower:
+        add_med("ketorolac")
 
     # Allergies
+    allergy_match = re.search(r"allergic to (\w+(?:\s+\w+)?)", lower)
+    if allergy_match:
+        add_allergy(allergy_match.group(1).strip())
     if "penicillin" in lower and ("allerg" in lower or "reaction" in lower):
         add_allergy("penicillin")
     if "sulfa" in lower and "allerg" in lower:
@@ -129,6 +140,20 @@ def heuristic_extract(transcript: str, existing: Optional[MedicalEntities]) -> M
         add_symptom("dizziness")
     if "palpitation" in lower:
         add_symptom("palpitations")
+
+    # Trauma / limb injury
+    if "partially detached" in lower or "partial detachment" in lower:
+        add_symptom("partially detached limb")
+    if "swinging around" in lower or ("swinging" in lower and "leg" in lower):
+        add_symptom("unstable leg injury")
+    if "very broken" in lower or "badly broken" in lower:
+        add_symptom("severe limb fracture")
+    if "detached" in lower and any(w in lower for w in ("leg", "arm", "limb")):
+        add_symptom("limb detachment")
+    if "compound fracture" in lower or "open fracture" in lower:
+        add_symptom("open fracture")
+    if "broken leg" in lower or ("broken" in lower and "leg" in lower):
+        add_symptom("broken leg")
 
     # Demographics — age
     age_match = re.search(r"\b(5[5-9]|6[0-9]|7[0-9]|8[0-9])\b", lower)

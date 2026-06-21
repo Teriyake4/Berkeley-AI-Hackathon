@@ -51,6 +51,9 @@ class _EncounterKeys:
     def vision_items(self, id: str) -> str:
         return encounter_key(id, "vision-items")
 
+    def active_medications(self, id: str) -> str:
+        return encounter_key(id, "active-medications")
+
     def all_keys(self, id: str):
         return [
             self.transcript(id),
@@ -66,6 +69,7 @@ class _EncounterKeys:
             self.symptom_timestamps(id),
             self.nremt_covered(id),
             self.vision_items(id),
+            self.active_medications(id),
         ]
 
 

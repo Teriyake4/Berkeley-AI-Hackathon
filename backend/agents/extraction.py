@@ -85,10 +85,18 @@ def _merge_entities(
         if m.name.lower() not in med_names:
             merged_meds.append(m)
 
+    allergy_keys: set[str] = set()
+    merged_allergies: list[str] = []
+    for a in existing.allergies + incoming.allergies:
+        key = a.lower().strip()
+        if key not in allergy_keys:
+            allergy_keys.add(key)
+            merged_allergies.append(a)
+
     return MedicalEntities(
         medications=merged_meds,
         conditions=list(dict.fromkeys(existing.conditions + incoming.conditions)),
-        allergies=list(dict.fromkeys(existing.allergies + incoming.allergies)),
+        allergies=merged_allergies,
         vitals={**existing.vitals, **incoming.vitals},
         symptoms=list(dict.fromkeys(existing.symptoms + incoming.symptoms)),
         demographics=incoming.demographics or existing.demographics,

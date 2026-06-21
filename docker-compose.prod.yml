@@ -13,6 +13,7 @@ services:
       - REDIS_URL=${REDIS_URL:-}
     volumes:
       - ./backend:/app
+      - ./scripts:/scripts:ro
       - /app/__pycache__
 
   frontend:

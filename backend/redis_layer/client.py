@@ -15,6 +15,18 @@ _subscriber = None
 _redis_unavailable = False
 
 
+def mark_redis_unavailable(reason: str = "") -> None:
+    """Stop retrying Redis after a failure; state/bus use in-memory fallback."""
+    global _redis_unavailable, _publisher, _subscriber
+    if _redis_unavailable:
+        return
+    _redis_unavailable = True
+    _publisher = None
+    _subscriber = None
+    suffix = f": {reason}" if reason else ""
+    logger.warning("[redis] unavailable — using in-memory fallback%s", suffix)
+
+
 def _make_client(url: str, name: str):
     try:
         import redis.asyncio as aioredis
@@ -60,5 +72,6 @@ async def ping_redis() -> bool:
             return False
         result = await client.ping()
         return result is True or result == b"PONG" or result == "PONG"
-    except Exception:
+    except Exception as e:
+        mark_redis_unavailable(str(e))
         return False

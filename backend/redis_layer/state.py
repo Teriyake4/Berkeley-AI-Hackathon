@@ -8,7 +8,7 @@ import json
 import logging
 from typing import Any, Dict, Optional, TypeVar
 
-from redis_layer.client import get_redis_publisher
+from redis_layer.client import get_redis_publisher, mark_redis_unavailable
 from redis_layer.keys import EncounterKeys
 
 logger = logging.getLogger(__name__)
@@ -25,6 +25,7 @@ async def _get(key: str) -> Optional[str]:
             return await redis.get(key)
         except Exception as e:
             logger.warning("[state] redis get failed: %s", e)
+            mark_redis_unavailable(str(e))
     return _memory_store.get(key)
 
 
@@ -36,6 +37,7 @@ async def _set(key: str, value: str) -> None:
             return
         except Exception as e:
             logger.warning("[state] redis set failed: %s", e)
+            mark_redis_unavailable(str(e))
     _memory_store[key] = value
 
 
@@ -90,6 +92,7 @@ async def add_to_set(key: str, member: str) -> bool:
             return added == 1
         except Exception as e:
             logger.warning("[state] redis sadd failed: %s", e)
+            mark_redis_unavailable(str(e))
 
     set_key = f"set:{key}"
     existing = _memory_store.get(set_key)
@@ -111,6 +114,7 @@ async def reset_encounter(encounter_id: str) -> None:
             return
         except Exception as e:
             logger.warning("[state] redis delete failed: %s", e)
+            mark_redis_unavailable(str(e))
 
     for key in keys:
         _memory_store.pop(key, None)

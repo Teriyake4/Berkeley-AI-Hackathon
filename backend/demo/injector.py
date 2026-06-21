@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
@@ -32,26 +33,67 @@ def is_demo_running(encounter_id: str) -> bool:
     return encounter_id in _active_injectors
 
 
+def _scenario_paths() -> List[Path]:
+    """Resolve demo-scenario.json for repo dev, Docker Compose, or explicit override."""
+    paths: List[Path] = []
+    env_path = os.environ.get("DEMO_SCENARIO_PATH")
+    if env_path:
+        paths.append(Path(env_path))
+    paths.extend([
+        Path("/scripts/demo-scenario.json"),  # docker compose: ./scripts mounted here
+        Path(__file__).resolve().parent.parent.parent / "scripts" / "demo-scenario.json",
+        Path(__file__).resolve().parent / "demo-scenario.json",
+    ])
+    # de-dupe while preserving order
+    seen: set[str] = set()
+    unique: List[Path] = []
+    for p in paths:
+        key = str(p)
+        if key not in seen:
+            seen.add(key)
+            unique.append(p)
+    return unique
+
+
+def _fallback_scenario() -> Dict[str, Any]:
+    """Minimal scenario if JSON file is missing — 1s between lines."""
+    beats: List[Dict[str, Any]] = []
+    lines = [
+        ("paramedic", "Ma'am, I'm Alex with county EMS. What happened?"),
+        ("patient", "Chest pain for two hours. It started while gardening."),
+        ("paramedic", "Any allergies? Medications?"),
+        ("patient", "Penicillin allergy. Lisinopril and warfarin."),
+        ("paramedic", "Getting vitals now."),
+        ("patient", "A little short of breath."),
+    ]
+    for i, (speaker, text) in enumerate(lines):
+        beats.append({
+            "id": f"fallback-{i + 1}",
+            "delayMs": i * 1000,
+            "type": "transcript",
+            "speaker": speaker,
+            "text": text,
+        })
+    return {"encounterId": "demo-encounter-001", "beats": beats}
+
+
 def _load_scenario() -> Dict[str, Any]:
-    scenario_path = Path(__file__).parent.parent.parent / "scripts" / "demo-scenario.json"
-    try:
-        with open(scenario_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as e:
-        logger.error("[demo] failed to load demo-scenario.json: %s", e)
-        return {
-            "encounterId": "demo-encounter-001",
-            "beats": [
-                {"id": "b1", "delayMs": 0, "type": "transcript", "speaker": "paramedic",
-                 "text": "Ma'am, I'm with county EMS. What happened?"},
-                {"id": "b2", "delayMs": 4000, "type": "transcript", "speaker": "patient",
-                 "text": "Chest pain for two hours. I take warfarin."},
-                {"id": "b3", "delayMs": 9000, "type": "transcript", "speaker": "paramedic",
-                 "text": "Any allergies? Shortness of breath?"},
-                {"id": "b4", "delayMs": 13000, "type": "transcript", "speaker": "patient",
-                 "text": "Penicillin allergy. A little short of breath, left arm pain."},
-            ],
-        }
+    for scenario_path in _scenario_paths():
+        try:
+            if not scenario_path.is_file():
+                continue
+            with open(scenario_path, "r", encoding="utf-8") as f:
+                scenario = json.load(f)
+            logger.info("[demo] loaded scenario from %s (%d beats)", scenario_path, len(scenario.get("beats", [])))
+            return scenario
+        except Exception as e:
+            logger.warning("[demo] could not load %s: %s", scenario_path, e)
+
+    logger.error(
+        "[demo] demo-scenario.json not found — tried: %s",
+        ", ".join(str(p) for p in _scenario_paths()),
+    )
+    return _fallback_scenario()
 
 
 async def run_demo_scenario(bus: InMemoryBus | RedisBus, encounter_id: str) -> None:

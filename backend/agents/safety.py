@@ -12,8 +12,9 @@ from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional
 
 from bus import InMemoryBus, RedisBus
-from claude import call_claude_json
-from events import EVENT_CHANNELS, Medication, entities_from_dict, to_dict
+from claude import call_claude_json, has_llm
+from debounce import schedule_debounce
+from events import EVENT_CHANNELS, MedicalEntities, Medication, entities_from_dict, to_dict
 from prompts.drug_interactions import (
     check_interactions,
     extract_drugs_from_text,
@@ -25,9 +26,14 @@ from prompts.safety import (
     SAFETY_SYSTEM,
     SafetyResult,
     _allergen_in_text,
+    _allergen_stem,
+    allergy_alert_concern,
+    allergy_alert_rationale,
     build_safety_prompt,
+    concern_dedupe_key,
     heuristic_allergy_flags,
     heuristic_safety,
+    parse_safety_flags_from_llm,
 )
 from redis_layer.keys import EncounterKeys
 from redis_layer.state import load_json, save_json
@@ -36,6 +42,9 @@ logger = logging.getLogger(__name__)
 
 ALLERGY_GAP_SECONDS = 120   # 2 minutes
 MISSED_FOLLOWUP_SECONDS = 180  # 3 minutes
+# LLM safety re-runs on transcript activity (independent of extraction debounce)
+SAFETY_DEBOUNCE_MS = 2000
+SAFETY_SILENCE_MS = 1000
 
 NREMT_ITEMS = [
     ("allergies", "Allergies not yet documented on scene"),
@@ -63,13 +72,14 @@ async def _fire_flag(
     clarifying_question: str | None = None,
     recommended_actions: list | None = None,
 ) -> None:
-    if concern in prior_concerns:
+    dedupe = concern_dedupe_key(concern)
+    if dedupe in {concern_dedupe_key(c) for c in prior_concerns}:
         return
-    prior_concerns.add(concern)
+    prior_concerns.add(dedupe)
 
     prior_raw = await load_json(EncounterKeys.safety_flags(encounter_id)) or []
-    existing_concerns = {f.get("concern", "") if isinstance(f, dict) else f.concern for f in prior_raw}
-    if concern in existing_concerns:
+    existing_keys = {concern_dedupe_key(f.get("concern", "") if isinstance(f, dict) else f.concern) for f in prior_raw}
+    if dedupe in existing_keys:
         return
 
     new_flag = {"concern": concern, "severity": severity, "rationale": rationale}
@@ -193,13 +203,9 @@ async def start_safety_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None]:
             display = next(a for a in entities.allergies if a.lower() == allergy_lower)
             await _fire_flag(
                 bus, encounter_id,
-                concern=f"ALLERGY ALERT: {display} — verify before any administration",
+                concern=allergy_alert_concern(display),
                 severity="high",
-                rationale=(
-                    f"Patient has stated allergy to {display}. "
-                    "Confirm all medications, foods, and treatments are safe before administration. "
-                    f"Do NOT give {display} or related agents."
-                ),
+                rationale=allergy_alert_rationale(display),
                 prior_concerns=fired,
             )
 
@@ -369,6 +375,88 @@ async def start_safety_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None]:
                     prior_concerns=fired,
                 )
 
+    # ── LLM safety analysis (primary path) ───────────────────────────────────
+
+    async def _run_safety_analysis(encounter_id: str) -> None:
+        """Run Claude/NIM safety pass on full transcript + entities; merge deterministic heuristics."""
+        from redis_layer.state import get_transcript
+
+        transcript = await get_transcript(encounter_id)
+        if not transcript.strip():
+            return
+
+        facts_raw = await load_json(EncounterKeys.facts(encounter_id))
+        entities = entities_from_dict(facts_raw) if facts_raw else MedicalEntities()
+
+        prior_raw = await load_json(EncounterKeys.safety_flags(encounter_id)) or []
+        prior_concerns = {
+            concern_dedupe_key(f.get("concern", "") if isinstance(f, dict) else f.concern)
+            for f in prior_raw
+        }
+
+        all_research = await load_json(EncounterKeys.research(encounter_id)) or []
+        active_meds = await _get_active_meds(encounter_id)
+        fired = _get_fired(encounter_id)
+
+        flags: List[SafetyResult] = []
+        llm_result = None
+
+        if has_llm():
+            try:
+                llm_result = await call_claude_json(
+                    SAFETY_SYSTEM,
+                    build_safety_prompt(entities, transcript, research_briefs=all_research),
+                    "safety",
+                )
+                if llm_result and isinstance(llm_result, list):
+                    flags = parse_safety_flags_from_llm(llm_result)
+                    logger.info(
+                        "[safety] LLM analysis for %s → %d flag(s)",
+                        encounter_id, len(flags),
+                    )
+                elif llm_result is not None:
+                    logger.warning("[safety] LLM returned non-list for %s: %s", encounter_id, type(llm_result))
+            except Exception as e:
+                logger.error("[safety] LLM analysis failed for %s: %s", encounter_id, e)
+
+        if not flags and (not has_llm() or llm_result is None):
+            logger.info("[safety] Using heuristic fallback for %s", encounter_id)
+            flags = heuristic_safety(entities, transcript)
+
+        # Always merge deterministic supplements (allergy, interactions, trauma)
+        supplements = heuristic_safety(entities, transcript)
+        supplements.extend(check_interactions(active_meds))
+        seen = {f.concern for f in flags}
+        for hf in supplements:
+            if concern_dedupe_key(hf.concern) not in {concern_dedupe_key(c) for c in seen}:
+                flags.append(hf)
+                seen.add(hf.concern)
+
+        new_flags = [f for f in flags if concern_dedupe_key(f.concern) not in prior_concerns]
+        if new_flags:
+            stored = list(prior_raw) + [
+                {
+                    "concern": f.concern,
+                    "severity": f.severity,
+                    "rationale": f.rationale,
+                    **({"clarifyingQuestion": f.clarifyingQuestion} if f.clarifyingQuestion else {}),
+                    **({"recommendedActions": f.recommendedActions} if f.recommendedActions else {}),
+                }
+                for f in new_flags
+            ]
+            await save_json(EncounterKeys.safety_flags(encounter_id), stored)
+
+        for flag in new_flags:
+            await _fire_flag(
+                bus, encounter_id,
+                concern=flag.concern,
+                severity=flag.severity,
+                rationale=flag.rationale,
+                prior_concerns=fired,
+                clarifying_question=flag.clarifyingQuestion,
+                recommended_actions=flag.recommendedActions,
+            )
+
     # ── Main facts handler ───────────────────────────────────────────────────
 
     async def on_facts_extracted(envelope: dict) -> None:
@@ -405,59 +493,7 @@ async def start_safety_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None]:
         active_meds = await _get_active_meds(encounter_id)
         await _flag_interactions(encounter_id, active_meds)
 
-        from redis_layer.state import get_transcript
-        transcript = await get_transcript(encounter_id)
-
-        # Run Claude safety analysis
-        prior_raw = await load_json(EncounterKeys.safety_flags(encounter_id)) or []
-        prior: List[SafetyResult] = [
-            SafetyResult(**f) if isinstance(f, dict) else f for f in prior_raw
-        ]
-
-        # Load all accumulated research briefs to give Claude full clinical context
-        all_research = await load_json(EncounterKeys.research(encounter_id)) or []
-
-        result = await call_claude_json(
-            SAFETY_SYSTEM,
-            build_safety_prompt(entities, transcript, research_briefs=all_research),
-            "safety",
-        )
-
-        if result and isinstance(result, list):
-            flags = [SafetyResult(**f) if isinstance(f, dict) else f for f in result]
-        else:
-            flags = heuristic_safety(entities, transcript)
-
-        if not isinstance(flags, list):
-            flags = heuristic_safety(entities, transcript)
-
-        # Always merge heuristic allergy/interaction flags (Claude may miss them)
-        heuristic_flags = heuristic_safety(entities, transcript)
-        interaction_flags = check_interactions(active_meds)
-        heuristic_flags.extend(interaction_flags)
-        prior_concerns_in_batch = {f.concern for f in flags}
-        for hf in heuristic_flags:
-            if hf.concern not in prior_concerns_in_batch:
-                flags.append(hf)
-                prior_concerns_in_batch.add(hf.concern)
-
-        prior_concerns = {p.concern if isinstance(p, SafetyResult) else p.get("concern", "") for p in prior}
-        new_flags = [f for f in flags if f.concern not in prior_concerns]
-        all_flags = prior + new_flags
-        await save_json(EncounterKeys.safety_flags(encounter_id), [to_dict(f) for f in all_flags])
-
-        for flag in new_flags:
-            cq = flag.clarifyingQuestion if isinstance(flag, SafetyResult) else flag.get("clarifyingQuestion") if isinstance(flag, dict) else None
-            ra = flag.recommendedActions if isinstance(flag, SafetyResult) else flag.get("recommendedActions") if isinstance(flag, dict) else None
-            await _fire_flag(
-                bus, encounter_id,
-                concern=flag.concern,
-                severity=flag.severity,
-                rationale=flag.rationale,
-                prior_concerns=fired,
-                clarifying_question=cq,
-                recommended_actions=ra,
-            )
+        await _run_safety_analysis(encounter_id)
 
         # NREMT checklist (runs after interaction flags so allergy coverage is recorded)
         await _check_nremt(encounter_id, entities)
@@ -524,20 +560,18 @@ async def start_safety_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None]:
         if not match:
             return
         allergen = match.group(1).strip()
-        concern = f"ALLERGY ALERT: {allergen} — verify before any administration"
+        known = _known_allergies.get(encounter_id, set())
+        if allergen.lower() in known or _allergen_stem(allergen) in {_allergen_stem(k) for k in known}:
+            return
+
         fired = _get_fired(encounter_id)
         await _fire_flag(
             bus, encounter_id,
-            concern=concern,
+            concern=allergy_alert_concern(allergen),
             severity="high",
-            rationale=(
-                f"Patient has stated allergy to {allergen}. "
-                "Confirm all medications, foods, and treatments are safe before administration. "
-                f"Do NOT give {allergen} or related agents."
-            ),
+            rationale=allergy_alert_rationale(allergen),
             prior_concerns=fired,
         )
-        known = _known_allergies.get(encounter_id, set())
         known.add(allergen.lower())
         _known_allergies[encounter_id] = known
 
@@ -555,51 +589,23 @@ async def start_safety_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None]:
             await _check_administered_medications(encounter_id, text, speaker)
             await _check_transcript_allergy_conflict(encounter_id, text, speaker)
 
+        # Re-run LLM safety on transcript activity (don't wait for extraction debounce)
+        from redis_layer.state import get_transcript
+        full = await get_transcript(encounter_id)
+        schedule_debounce(
+            f"safety:{encounter_id}",
+            SAFETY_DEBOUNCE_MS,
+            SAFETY_SILENCE_MS,
+            full,
+            lambda: _run_safety_analysis(encounter_id),
+        )
+
     async def on_research_completed(envelope: dict) -> None:
         payload = envelope.get("payload", {})
         encounter_id = payload.get("encounterId", "")
         if not encounter_id:
             return
-
-        facts_raw = await load_json(EncounterKeys.facts(encounter_id))
-        if not facts_raw:
-            return
-        entities = entities_from_dict(facts_raw)
-
-        from redis_layer.state import get_transcript
-        transcript = await get_transcript(encounter_id)
-        all_research = await load_json(EncounterKeys.research(encounter_id)) or []
-
-        result = await call_claude_json(
-            SAFETY_SYSTEM,
-            build_safety_prompt(entities, transcript, research_briefs=all_research),
-            "safety",
-        )
-
-        if result and isinstance(result, list):
-            flags = [
-                SafetyResult(**{k: v for k, v in f.items() if k in ("concern", "severity", "rationale", "clarifyingQuestion", "recommendedActions")})
-                if isinstance(f, dict) else f
-                for f in result
-            ]
-        else:
-            flags = heuristic_safety(entities, transcript)
-
-        if not isinstance(flags, list):
-            flags = []
-
-        prior_raw = await load_json(EncounterKeys.safety_flags(encounter_id)) or []
-        prior_concerns = {f.get("concern", "") if isinstance(f, dict) else f.concern for f in prior_raw}
-        fired = _get_fired(encounter_id)
-
-        for flag in flags:
-            concern = flag.concern if isinstance(flag, SafetyResult) else flag.get("concern", "")
-            severity = flag.severity if isinstance(flag, SafetyResult) else flag.get("severity", "medium")
-            rationale = flag.rationale if isinstance(flag, SafetyResult) else flag.get("rationale", "")
-            cq = flag.clarifyingQuestion if isinstance(flag, SafetyResult) else flag.get("clarifyingQuestion")
-            ra = flag.recommendedActions if isinstance(flag, SafetyResult) else flag.get("recommendedActions")
-            if concern and concern not in prior_concerns:
-                await _fire_flag(bus, encounter_id, concern, severity, rationale, fired, clarifying_question=cq, recommended_actions=ra)
+        await _run_safety_analysis(encounter_id)
 
     unsub_facts = await bus.subscribe(EVENT_CHANNELS.FACTS_EXTRACTED, on_facts_extracted)
     unsub_vision = await bus.subscribe(EVENT_CHANNELS.VISION_CAPTURED, on_vision_captured)

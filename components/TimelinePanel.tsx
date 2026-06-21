@@ -27,10 +27,17 @@ export function TimelinePanel({ events }: { events: TimelineEntry[] }) {
             {sorted.map((event) => {
               const dot = sourceStyles[event.source ?? "extraction"] ?? sourceStyles.extraction;
               const isSafety = event.source === "safety";
+              const isDangerous =
+                isSafety ||
+                /\ballerg(y|ic)\b|despite.*allerg|critical|do not administer|bleeding risk|drug interaction/i.test(
+                  event.summary
+                );
               return (
                 <li key={event.id} className="ml-5 animate-fade-in">
                   <span
-                    className={`absolute -left-2 mt-0.5 h-4 w-4 rounded-full ring-4 ring-white ${dot}`}
+                    className={`absolute -left-2 mt-0.5 h-4 w-4 rounded-full ring-4 ring-white ${
+                      isDangerous ? sourceStyles.safety : dot
+                    }`}
                   />
                   <time className="text-xs text-slate-400 font-mono">
                     {new Date(event.timestamp).toLocaleTimeString([], {
@@ -40,11 +47,12 @@ export function TimelinePanel({ events }: { events: TimelineEntry[] }) {
                   </time>
                   <p
                     className={`text-sm mt-0.5 leading-snug ${
-                      isSafety
+                      isDangerous
                         ? "text-red-700 font-semibold"
                         : "text-slate-800"
                     }`}
                   >
+                    {isDangerous && !isSafety ? "⚠ " : ""}
                     {isSafety ? event.summary : event.summary.replace(/^⚠\s*/, "")}
                   </p>
                 </li>

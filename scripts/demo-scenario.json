@@ -1,6 +1,6 @@
 {
   "encounterId": "demo-encounter-001",
-  "description": "67F acute chest pain — ambulance demo. Triggers: extraction, warfarin flag, missed follow-up (~3:11), NREMT gaps, vision cross-check (3:30), GPS timeline.",
+  "description": "67F acute chest pain — ambulance demo (1s between beats). Triggers: extraction, warfarin flag, NREMT gaps, vision cross-check, GPS timeline.",
   "beats": [
     {
       "id": "telemetry-1",
@@ -11,119 +11,119 @@
     },
     {
       "id": "beat-1",
-      "delayMs": 2000,
+      "delayMs": 1000,
       "type": "transcript",
       "speaker": "paramedic",
       "text": "Ma'am, I'm Alex with county EMS. Can you tell me what happened?"
     },
     {
       "id": "beat-2",
-      "delayMs": 7000,
+      "delayMs": 2000,
       "type": "transcript",
       "speaker": "patient",
       "text": "I've had chest pain for about two hours. It started suddenly while I was gardening."
     },
     {
       "id": "beat-3",
-      "delayMs": 14000,
+      "delayMs": 3000,
       "type": "transcript",
       "speaker": "paramedic",
       "text": "Do you have any allergies to medications? Any current medications or medical history?"
     },
     {
       "id": "beat-4",
-      "delayMs": 20000,
+      "delayMs": 4000,
       "type": "transcript",
       "speaker": "patient",
       "text": "I'm allergic to penicillin — I get a rash. I take lisinopril for my blood pressure."
     },
     {
       "id": "telemetry-2",
-      "delayMs": 27000,
+      "delayMs": 5000,
       "type": "telemetry",
       "event": "patient_contact",
       "label": "Patient responsive, seated on porch"
     },
     {
       "id": "beat-5",
-      "delayMs": 32000,
+      "delayMs": 6000,
       "type": "transcript",
       "speaker": "paramedic",
       "text": "Any blood thinners or heart medications?"
     },
     {
       "id": "beat-6",
-      "delayMs": 37000,
+      "delayMs": 7000,
       "type": "transcript",
       "speaker": "patient",
       "text": "Yes, warfarin. I had a heart valve replacement three years ago."
     },
     {
       "id": "beat-7",
-      "delayMs": 48000,
+      "delayMs": 8000,
       "type": "transcript",
       "speaker": "paramedic",
       "text": "Okay, getting your vitals. Blood pressure 158 over 94, heart rate 92, oxygen sat 96%."
     },
     {
       "id": "beat-8",
-      "delayMs": 65000,
+      "delayMs": 9000,
       "type": "transcript",
       "speaker": "paramedic",
       "text": "Let me get you on supplemental oxygen, four liters nasal cannula."
     },
     {
       "id": "audio-1",
-      "delayMs": 78000,
+      "delayMs": 10000,
       "type": "audio",
       "event": "monitor_tone",
       "detail": "12-lead ECG acquisition"
     },
     {
       "id": "beat-9",
-      "delayMs": 90000,
+      "delayMs": 11000,
       "type": "transcript",
       "speaker": "paramedic",
       "text": "ECG shows sinus rhythm. SpO2 coming up to 98. Let me document your information for the receiving hospital."
     },
     {
       "id": "beat-10",
-      "delayMs": 112000,
+      "delayMs": 12000,
       "type": "transcript",
       "speaker": "paramedic",
       "text": "We're going to load you into the unit now and head to County General — about eight minutes out."
     },
     {
       "id": "telemetry-3",
-      "delayMs": 130000,
+      "delayMs": 13000,
       "type": "telemetry",
       "event": "en_route",
       "label": "County General, ETA 8 minutes"
     },
     {
       "id": "beat-11",
-      "delayMs": 145000,
+      "delayMs": 14000,
       "type": "transcript",
       "speaker": "paramedic",
       "text": "Oxygen sat holding at 97%. Keep the mask on please."
     },
     {
       "id": "audio-2",
-      "delayMs": 168000,
+      "delayMs": 15000,
       "type": "audio",
       "event": "silence",
       "detail": "Extended quiet period en route"
     },
     {
       "id": "beat-12",
-      "delayMs": 185000,
+      "delayMs": 16000,
       "type": "transcript",
       "speaker": "paramedic",
       "text": "I found a medication bag at the scene. Let me check what's in here before we arrive."
     },
     {
       "id": "vision-1",
-      "delayMs": 210000,
+      "delayMs": 17000,
       "type": "vision",
       "identified": "aspirin 325mg",
       "captureType": "vial_label",
@@ -131,21 +131,21 @@
     },
     {
       "id": "beat-13",
-      "delayMs": 217000,
+      "delayMs": 18000,
       "type": "transcript",
       "speaker": "paramedic",
       "text": "I see an aspirin bottle here. Were you taking aspirin regularly?"
     },
     {
       "id": "beat-14",
-      "delayMs": 225000,
+      "delayMs": 19000,
       "type": "transcript",
       "speaker": "patient",
       "text": "No, that's just in the medicine cabinet. I haven't taken any today."
     },
     {
       "id": "telemetry-4",
-      "delayMs": 240000,
+      "delayMs": 20000,
       "type": "telemetry",
       "event": "hospital_arrival",
       "label": "County General ED bay 3"
