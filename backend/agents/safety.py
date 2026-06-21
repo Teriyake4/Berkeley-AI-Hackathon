@@ -60,6 +60,7 @@ async def _fire_flag(
     severity: str,
     rationale: str,
     prior_concerns: set,
+    clarifying_question: str | None = None,
 ) -> None:
     if concern in prior_concerns:
         return
@@ -71,16 +72,21 @@ async def _fire_flag(
         return
 
     new_flag = {"concern": concern, "severity": severity, "rationale": rationale}
+    if clarifying_question:
+        new_flag["clarifyingQuestion"] = clarifying_question
     prior_raw.append(new_flag)
     await save_json(EncounterKeys.safety_flags(encounter_id), prior_raw)
 
-    await bus.publish(EVENT_CHANNELS.SAFETY_FLAGGED, {
+    event_payload = {
         "encounterId": encounter_id,
         "concern": concern,
         "severity": severity,
         "rationale": rationale,
         "flaggedAt": datetime.now(timezone.utc).isoformat(),
-    })
+    }
+    if clarifying_question:
+        event_payload["clarifyingQuestion"] = clarifying_question
+    await bus.publish(EVENT_CHANNELS.SAFETY_FLAGGED, event_payload)
 
 
 async def start_safety_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None]:
@@ -436,12 +442,14 @@ async def start_safety_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None]:
         await save_json(EncounterKeys.safety_flags(encounter_id), [to_dict(f) for f in all_flags])
 
         for flag in new_flags:
+            cq = flag.clarifyingQuestion if isinstance(flag, SafetyResult) else flag.get("clarifyingQuestion") if isinstance(flag, dict) else None
             await _fire_flag(
                 bus, encounter_id,
                 concern=flag.concern,
                 severity=flag.severity,
                 rationale=flag.rationale,
                 prior_concerns=fired,
+                clarifying_question=cq,
             )
 
         # NREMT checklist (runs after interaction flags so allergy coverage is recorded)
@@ -562,7 +570,11 @@ async def start_safety_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None]:
         )
 
         if result and isinstance(result, list):
-            flags = [SafetyResult(**{k: v for k, v in f.items() if k in ("concern", "severity", "rationale")}) if isinstance(f, dict) else f for f in result]
+            flags = [
+                SafetyResult(**{k: v for k, v in f.items() if k in ("concern", "severity", "rationale", "clarifyingQuestion")})
+                if isinstance(f, dict) else f
+                for f in result
+            ]
         else:
             flags = heuristic_safety(entities, transcript)
 
@@ -577,8 +589,9 @@ async def start_safety_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None]:
             concern = flag.concern if isinstance(flag, SafetyResult) else flag.get("concern", "")
             severity = flag.severity if isinstance(flag, SafetyResult) else flag.get("severity", "medium")
             rationale = flag.rationale if isinstance(flag, SafetyResult) else flag.get("rationale", "")
+            cq = flag.clarifyingQuestion if isinstance(flag, SafetyResult) else flag.get("clarifyingQuestion")
             if concern and concern not in prior_concerns:
-                await _fire_flag(bus, encounter_id, concern, severity, rationale, fired)
+                await _fire_flag(bus, encounter_id, concern, severity, rationale, fired, clarifying_question=cq)
 
     unsub_facts = await bus.subscribe(EVENT_CHANNELS.FACTS_EXTRACTED, on_facts_extracted)
     unsub_vision = await bus.subscribe(EVENT_CHANNELS.VISION_CAPTURED, on_vision_captured)

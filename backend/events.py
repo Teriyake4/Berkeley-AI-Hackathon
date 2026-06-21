@@ -11,7 +11,7 @@ from enum import Enum
 # ─── Primitives ────────────────────────────────────────────────────────────────
 
 Speaker = Literal["paramedic", "doctor", "patient", "bystander", "unknown"]
-Severity = Literal["low", "medium", "high"]
+Severity = Literal["low", "medium", "high", "critical"]
 
 
 @dataclass
@@ -100,6 +100,7 @@ class SafetyFlaggedPayload:
     severity: Severity
     rationale: str
     flaggedAt: str
+    clarifyingQuestion: Optional[str] = None
 
 
 @dataclass

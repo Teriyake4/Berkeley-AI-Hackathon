@@ -2,6 +2,13 @@ import type { SafetyFlaggedPayload } from "@/types/events";
 import type { Citation } from "@/types/events";
 
 const severityConfig = {
+  critical: {
+    card: "border-red-600 bg-red-100 ring-1 ring-red-500",
+    label: "bg-red-700 text-white",
+    text: "text-red-950",
+    subtext: "text-red-800",
+    icon: "🆘",
+  },
   high: {
     card: "border-red-300 bg-red-50",
     label: "bg-red-500 text-white",
@@ -43,7 +50,7 @@ export function InsightsPanel({
   suggestedFollowUps: string[];
 }) {
   const sortedFlags = [...safetyFlags].sort((a, b) => {
-    const order = { high: 0, medium: 1, low: 2 };
+    const order = { critical: 0, high: 1, medium: 2, low: 3 };
     return order[a.severity] - order[b.severity];
   });
 
@@ -90,6 +97,11 @@ export function InsightsPanel({
                       <p className={`text-xs mt-1 leading-relaxed ${cfg.subtext}`}>
                         {flag.rationale}
                       </p>
+                      {flag.clarifyingQuestion && (
+                        <p className="text-xs mt-2 font-medium text-slate-600 bg-white/60 rounded px-2 py-1 border border-slate-200">
+                          💬 {flag.clarifyingQuestion}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -7,7 +7,7 @@
 
 export type Speaker = "paramedic" | "doctor" | "patient" | "bystander" | "unknown";
 
-export type Severity = "low" | "medium" | "high";
+export type Severity = "low" | "medium" | "high" | "critical";
 
 export interface TimelineEntry {
   id: string;
@@ -82,6 +82,7 @@ export interface SafetyFlaggedPayload {
   severity: Severity;
   rationale: string;
   flaggedAt: string;
+  clarifyingQuestion?: string;
 }
 
 export interface NoteUpdatedPayload {
