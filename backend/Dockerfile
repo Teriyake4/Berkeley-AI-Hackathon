@@ -6,7 +6,6 @@ COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ .
-COPY scripts/demo-scenario.json /scripts/demo-scenario.json
 
 EXPOSE 8000
 
