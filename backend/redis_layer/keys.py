@@ -5,6 +5,8 @@ Redis key conventions — mirrors lib/redis/keys.ts.
 ENCOUNTER_ID = "demo-encounter-001"
 
 PUBSUB_PREFIX = "nos:"
+SESSIONS_INDEX = "nos:sessions"
+ACTIVE_SESSION = "nos:active-session"
 
 
 def encounter_key(encounter_id: str, suffix: str) -> str:
@@ -54,9 +56,20 @@ class _EncounterKeys:
     def active_medications(self, id: str) -> str:
         return encounter_key(id, "active-medications")
 
+    def meta(self, id: str) -> str:
+        return encounter_key(id, "meta")
+
+    def transcript_lines(self, id: str) -> str:
+        return encounter_key(id, "transcript-lines")
+
+    def events(self, id: str) -> str:
+        return encounter_key(id, "events")
+
     def all_keys(self, id: str):
         return [
             self.transcript(id),
+            self.transcript_lines(id),
+            self.events(id),
             self.buffer(id),
             self.facts(id),
             self.timeline(id),

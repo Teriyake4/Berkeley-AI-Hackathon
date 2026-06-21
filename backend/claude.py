@@ -42,8 +42,34 @@ def has_llm() -> bool:
     return has_claude() or has_nim()
 
 
-def _claude_model() -> str:
-    return os.environ.get("ANTHROPIC_MODEL", "claude-haiku-4-5")
+HAIKU_MODEL = "claude-haiku-4-5"
+SONNET_MODEL = "claude-sonnet-4-6"
+
+# Per-agent defaults — handoff needs long context; timeline stays fast/cheap
+AGENT_MODELS: dict[str, str] = {}
+AGENT_MAX_TOKENS: dict[str, int] = {
+    "handoff": 4096,
+}
+
+
+def _refresh_agent_models() -> None:
+    AGENT_MODELS.clear()
+    AGENT_MODELS.update({
+        "handoff": os.environ.get("ANTHROPIC_MODEL_HANDOFF", SONNET_MODEL),
+        "timeline": os.environ.get("ANTHROPIC_MODEL_TIMELINE", HAIKU_MODEL),
+    })
+
+
+_refresh_agent_models()
+
+
+def _claude_model(agent_name: str) -> str:
+    _refresh_agent_models()
+    return AGENT_MODELS.get(agent_name) or os.environ.get("ANTHROPIC_MODEL", HAIKU_MODEL)
+
+
+def _max_tokens_for(agent_name: str) -> int:
+    return AGENT_MAX_TOKENS.get(agent_name, 2048)
 
 
 async def _call_claude_json(system: str, user: str, agent_name: str) -> Optional[Any]:
@@ -52,12 +78,14 @@ async def _call_claude_json(system: str, user: str, agent_name: str) -> Optional
         return None
 
     full_system = system + JSON_SYSTEM_SUFFIX
+    model = _claude_model(agent_name)
+    max_tokens = _max_tokens_for(agent_name)
 
     for attempt in range(2):
         try:
             response = await client.messages.create(
-                model=_claude_model(),
-                max_tokens=2048,
+                model=model,
+                max_tokens=max_tokens,
                 system=full_system,
                 messages=[{"role": "user", "content": user}],
             )
@@ -73,7 +101,7 @@ async def _call_claude_json(system: str, user: str, agent_name: str) -> Optional
             if status == 429 and attempt == 0:
                 await asyncio.sleep(2.0)
                 continue
-            logger.warning("[claude/%s] error: %s", agent_name, e)
+            logger.warning("[claude/%s] error (model=%s): %s", agent_name, model, e)
             return None
 
     return None

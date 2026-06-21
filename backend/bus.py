@@ -22,6 +22,21 @@ logger = logging.getLogger(__name__)
 EventHandler = Callable[[Dict[str, Any]], Coroutine[Any, Any, None]]
 
 
+async def _persist_event_log(channel: str, payload: Any) -> None:
+    from events import to_dict
+
+    data = to_dict(payload)
+    encounter_id = data.get("encounterId") if isinstance(data, dict) else None
+    if not encounter_id:
+        return
+    try:
+        from redis_layer.state import append_event_log
+
+        await append_event_log(encounter_id, channel, data)
+    except Exception as e:
+        logger.warning("[bus] event log append failed: %s", e)
+
+
 class InMemoryBus:
     def __init__(self) -> None:
         self._listeners: Dict[str, Set[EventHandler]] = {}
@@ -32,6 +47,7 @@ class InMemoryBus:
 
         envelope = {"channel": channel, "payload": to_dict(payload)}
         broadcast_to_clients(envelope)
+        await _persist_event_log(channel, payload)
 
         handlers = list(self._listeners.get(channel, set()))
         tasks = []
@@ -94,6 +110,7 @@ class RedisBus:
 
         # 1. Fan out to SSE clients immediately
         broadcast_to_clients(envelope)
+        await _persist_event_log(channel, payload)
 
         # 2. Dispatch to local agent handlers directly
         handlers = list(self._local_handlers.get(channel, set()))

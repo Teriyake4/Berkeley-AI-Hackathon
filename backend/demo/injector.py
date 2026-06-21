@@ -15,7 +15,7 @@ from typing import Any, Dict, List
 
 from bus import InMemoryBus, RedisBus
 from events import EVENT_CHANNELS
-from redis_layer.state import append_transcript
+from redis_layer.state import append_transcript_line
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +137,7 @@ async def run_demo_scenario(bus: InMemoryBus | RedisBus, encounter_id: str) -> N
             if beat_type == "transcript":
                 speaker = beat.get("speaker", "unknown")
                 text = beat.get("text", "")
-                await append_transcript(encounter_id, f"[{speaker}] {text}")
+                await append_transcript_line(encounter_id, speaker, text, timestamp)
                 await bus.publish(EVENT_CHANNELS.TRANSCRIPT_SEGMENT, {
                     "encounterId": encounter_id,
                     "text": text,

@@ -52,7 +52,7 @@ def build_handoff_prompt(
         json.dumps(to_dict(soap) if soap else None, indent=2),
         "",
         "Full transcript:",
-        transcript[-3000:],
+        transcript[-12000:],
         "",
         "Generate the structured handoff report JSON.",
     ])

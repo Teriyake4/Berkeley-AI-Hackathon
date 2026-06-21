@@ -13,17 +13,23 @@ from typing import Callable, List
 from bus import InMemoryBus, RedisBus
 from claude import call_claude_json
 from events import EVENT_CHANNELS, TimelineEntry, entities_from_dict, timeline_entry_from_dict, to_dict
-from prompts.timeline import TIMELINE_SYSTEM, build_timeline_prompt, heuristic_timeline
+from prompts.timeline import (
+    TIMELINE_SYSTEM,
+    build_timeline_prompt,
+    heuristic_timeline,
+    merge_timeline,
+    _normalize_extraction_timestamps,
+)
 from redis_layer.keys import EncounterKeys
 from redis_layer.state import get_transcript, load_json, save_json
 
 logger = logging.getLogger(__name__)
 
 TELEMETRY_LABELS = {
-    "scene_arrival": "GPS: Scene arrival",
-    "patient_contact": "GPS: Patient contact established",
-    "en_route": "GPS: En route to hospital",
-    "hospital_arrival": "GPS: Hospital arrival",
+    "scene_arrival": "Scene Arrival",
+    "patient_contact": "Patient contact established",
+    "en_route": "En Route",
+    "hospital_arrival": "Hospital Arrival",
 }
 
 AUDIO_LABELS = {
@@ -49,13 +55,24 @@ async def _append_and_publish(
     if any(short in e.summary.lower() for e in existing):
         return
 
-    updated = existing + [new_entry]
-    updated = sorted(updated, key=lambda e: e.timestamp)[-15:]
+    updated = sorted(existing + [new_entry], key=lambda e: e.timestamp)[-20:]
 
     await save_json(EncounterKeys.timeline(encounter_id), [to_dict(e) for e in updated])
     await bus.publish(EVENT_CHANNELS.TIMELINE_UPDATED, {
         "encounterId": encounter_id,
         "events": [to_dict(e) for e in updated],
+    })
+
+
+async def _publish_timeline(
+    bus: InMemoryBus | RedisBus,
+    encounter_id: str,
+    events: List[TimelineEntry],
+) -> None:
+    await save_json(EncounterKeys.timeline(encounter_id), [to_dict(e) for e in events])
+    await bus.publish(EVENT_CHANNELS.TIMELINE_UPDATED, {
+        "encounterId": encounter_id,
+        "events": [to_dict(e) for e in events],
     })
 
 
@@ -66,6 +83,7 @@ async def start_timeline_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None
         encounter_id = payload.get("encounterId", "")
         entities_raw = payload.get("entities", {})
         entities = entities_from_dict(entities_raw)
+        extracted_at = payload.get("extractedAt") or datetime.now(timezone.utc).isoformat()
 
         existing_raw = await load_json(EncounterKeys.timeline(encounter_id)) or []
         existing: List[TimelineEntry] = [
@@ -73,26 +91,30 @@ async def start_timeline_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None
             for e in existing_raw
         ]
         transcript = await get_transcript(encounter_id)
+        transcript_lines = await load_json(EncounterKeys.transcript_lines(encounter_id)) or []
 
         result = await call_claude_json(
             TIMELINE_SYSTEM,
-            build_timeline_prompt(entities, transcript, existing),
+            build_timeline_prompt(
+                entities, transcript, existing, extracted_at, transcript_lines
+            ),
             "timeline",
         )
 
         if result and isinstance(result, list):
-            events = [timeline_entry_from_dict(e) if isinstance(e, dict) else e for e in result]
+            raw_events = [
+                timeline_entry_from_dict(e) if isinstance(e, dict) else e for e in result
+            ]
+            extraction_events = _normalize_extraction_timestamps(
+                raw_events, existing, extracted_at, transcript_lines
+            )
         else:
-            events = heuristic_timeline(entities, existing)
+            extraction_events = heuristic_timeline(
+                entities, existing, extracted_at, transcript_lines
+            )
 
-        if not isinstance(events, list):
-            events = heuristic_timeline(entities, existing)
-
-        await save_json(EncounterKeys.timeline(encounter_id), [to_dict(e) for e in events])
-        await bus.publish(EVENT_CHANNELS.TIMELINE_UPDATED, {
-            "encounterId": encounter_id,
-            "events": [to_dict(e) for e in events],
-        })
+        events = merge_timeline(existing, extraction_events)
+        await _publish_timeline(bus, encounter_id, events)
 
     async def on_audio_event(envelope: dict) -> None:
         payload = envelope.get("payload", {})
@@ -105,10 +127,10 @@ async def start_timeline_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None
         summary = f"{label}{f' — {detail}' if detail else ''}"
 
         entry = TimelineEntry(
-            id=f"audio-{uuid.uuid4().hex[:8]}",
+            id=f"audio-{event_type}-{timestamp}",
             timestamp=timestamp,
             summary=summary,
-            source="manual",
+            source="audio",
         )
         await _append_and_publish(bus, encounter_id, entry)
 
@@ -119,15 +141,15 @@ async def start_timeline_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None
         timestamp = payload.get("timestamp", datetime.now(timezone.utc).isoformat())
         label = payload.get("label", "")
 
-        summary = TELEMETRY_LABELS.get(event, f"GPS: {event}")
+        summary = TELEMETRY_LABELS.get(event, event.replace("_", " ").title())
         if label:
             summary = f"{summary} — {label}"
 
         entry = TimelineEntry(
-            id=f"telemetry-{uuid.uuid4().hex[:8]}",
+            id=f"telemetry-{event}-{timestamp}",
             timestamp=timestamp,
             summary=summary,
-            source="manual",
+            source="telemetry",
         )
         await _append_and_publish(bus, encounter_id, entry)
 
@@ -141,12 +163,12 @@ async def start_timeline_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None
         if not identified:
             return
 
-        summary = f"Vision scan ({capture_type}): {identified} identified on scene"
+        summary = f"Vision: {identified} identified"
         entry = TimelineEntry(
-            id=f"vision-{uuid.uuid4().hex[:8]}",
+            id=f"vision-{timestamp}",
             timestamp=timestamp,
             summary=summary,
-            source="manual",
+            source="vision",
         )
         await _append_and_publish(bus, encounter_id, entry)
 

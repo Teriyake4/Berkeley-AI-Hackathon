@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 import os
+import uuid
 from datetime import datetime, timezone
 from typing import AsyncGenerator
 
@@ -21,7 +22,15 @@ from demo.injector import is_demo_running, run_demo_scenario, stop_demo
 from events import EVENT_CHANNELS
 from redis_layer.client import is_redis_available, ping_redis
 from redis_layer.keys import ENCOUNTER_ID
-from redis_layer.state import append_transcript, reset_encounter
+from redis_layer.state import (
+    append_transcript_line,
+    finalize_active_session,
+    finalize_session,
+    get_encounter_snapshot,
+    list_sessions,
+    start_pending_session,
+    reset_encounter,
+)
 from sse.hub import add_sse_client, get_client_count, remove_sse_client
 
 logger = logging.getLogger(__name__)
@@ -143,8 +152,12 @@ async def start_encounter(request: Request):
         body = {}
 
     mode = "live" if body.get("mode") == "live" else "demo"
-    encounter_id: str = body.get("encounterId") or ENCOUNTER_ID
+    await finalize_active_session()
 
+    encounter_id = str(uuid.uuid4())
+    started_at = datetime.now(timezone.utc).isoformat()
+
+    await start_pending_session(encounter_id, mode)
     await reset_encounter(encounter_id)
     stop_demo(encounter_id)
 
@@ -152,7 +165,12 @@ async def start_encounter(request: Request):
         bus = get_event_bus()
         asyncio.create_task(_run_demo(bus, encounter_id))
 
-    return JSONResponse({"encounterId": encounter_id, "mode": mode, "status": "started"})
+    return JSONResponse({
+        "encounterId": encounter_id,
+        "mode": mode,
+        "status": "started",
+        "startedAt": started_at,
+    })
 
 
 async def _run_demo(bus, encounter_id: str) -> None:
@@ -179,8 +197,24 @@ async def delete_encounter(request: Request):
         body = {}
     encounter_id: str = body.get("encounterId") or ENCOUNTER_ID
     stop_demo(encounter_id)
-    await reset_encounter(encounter_id)
-    return JSONResponse({"encounterId": encounter_id, "status": "reset"})
+    await finalize_session(encounter_id)
+    return JSONResponse({"encounterId": encounter_id, "status": "completed"})
+
+
+# ── Sessions (log history) ──────────────────────────────────────────────────
+
+@router.get("/api/sessions")
+async def get_sessions():
+    sessions = await list_sessions()
+    return JSONResponse({"sessions": sessions})
+
+
+@router.get("/api/sessions/{encounter_id}")
+async def get_session_snapshot(encounter_id: str):
+    snapshot = await get_encounter_snapshot(encounter_id)
+    if snapshot is None:
+        return JSONResponse({"error": "session not found"}, status_code=404)
+    return JSONResponse(snapshot)
 
 
 # ── Transcript ──────────────────────────────────────────────────────────────
@@ -202,7 +236,7 @@ async def post_transcript(request: Request):
         return JSONResponse({"error": "text required"}, status_code=400)
 
     timestamp = datetime.now(timezone.utc).isoformat()
-    await append_transcript(encounter_id, f"[{speaker}] {text}")
+    await append_transcript_line(encounter_id, speaker, text, timestamp)
 
     bus = get_event_bus()
     await bus.publish(EVENT_CHANNELS.TRANSCRIPT_SEGMENT, {

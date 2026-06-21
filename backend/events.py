@@ -19,7 +19,7 @@ class TimelineEntry:
     id: str
     timestamp: str  # ISO 8601
     summary: str
-    source: Optional[Literal["extraction", "safety", "manual"]] = None
+    source: Optional[Literal["extraction", "safety", "manual", "telemetry", "audio", "vision"]] = None
 
 
 @dataclass

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ENCOUNTER_ID } from "@/types/constants";
 
 // --- Tunables -------------------------------------------------------------
 const BASELINE_INTERVAL_MS = 4000; // fallback capture cadence
@@ -16,7 +15,23 @@ const MIN_POST_INTERVAL_MS = 1500; // hard floor between actual POSTs
 
 type Status = "idle" | "monitoring" | "scanning";
 
-export function VisionCapture({ active = true }: { active?: boolean }) {
+interface VisionItem {
+  identified: string;
+  captureType: string;
+  timestamp: string;
+}
+
+export function VisionCapture({
+  active = true,
+  readOnly = false,
+  encounterId = "",
+  visionItems = [],
+}: {
+  active?: boolean;
+  readOnly?: boolean;
+  encounterId?: string;
+  visionItems?: VisionItem[];
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const diffCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -73,6 +88,8 @@ export function VisionCapture({ active = true }: { active?: boolean }) {
     }
     const frame_base64 = dataUrl.replace(/^data:image\/jpeg;base64,/, "");
 
+    if (!encounterId) return;
+
     inFlightRef.current = true;
     lastPostRef.current = now;
     setStatusSafe("scanning");
@@ -81,7 +98,7 @@ export function VisionCapture({ active = true }: { active?: boolean }) {
       await fetch("/api/vision", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ frame_base64, encounterId: ENCOUNTER_ID }),
+        body: JSON.stringify({ frame_base64, encounterId }),
       });
     } catch {
       // Swallow — the vision.captured event comes back over SSE elsewhere.
@@ -92,7 +109,7 @@ export function VisionCapture({ active = true }: { active?: boolean }) {
         setStatusSafe(streamRef.current ? "monitoring" : "idle");
       }
     }
-  }, [setStatusSafe]);
+  }, [encounterId, setStatusSafe]);
 
   // --- Motion detection sample -------------------------------------------
   const sampleMotion = useCallback(() => {
@@ -168,7 +185,7 @@ export function VisionCapture({ active = true }: { active?: boolean }) {
   }, []);
 
   useEffect(() => {
-    if (!active) {
+    if (!active || readOnly) {
       setStreaming(false);
       setStatusSafe("idle");
       return;
@@ -227,7 +244,31 @@ export function VisionCapture({ active = true }: { active?: boolean }) {
       steadySinceRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
+  }, [active, readOnly]);
+
+  if (readOnly) {
+    return (
+      <div className="flex flex-col h-full">
+        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">
+          Vision Captures
+        </h2>
+        <div className="flex-1 overflow-y-auto space-y-2">
+          {visionItems.length === 0 && (
+            <p className="text-sm text-slate-400 italic">No vision captures in this session.</p>
+          )}
+          {visionItems.map((item, i) => (
+            <div
+              key={`${item.timestamp}-${i}`}
+              className="text-sm p-3 rounded-lg bg-emerald-50 border border-emerald-200"
+            >
+              <span className="font-medium text-emerald-900">{item.identified}</span>
+              <span className="text-xs text-emerald-700 ml-2 capitalize">({item.captureType})</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">

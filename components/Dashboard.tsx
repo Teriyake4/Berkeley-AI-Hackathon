@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useEncounterEvents } from "@/hooks/useEncounterEvents";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
@@ -24,94 +25,175 @@ const AGENT_LABELS: Record<string, string> = {
   handoff: "Handoff",
 };
 
-export function Dashboard() {
-  const { state, missingInfo, suggestedFollowUps, startEncounter, requestHandoff, pushTranscript } =
-    useEncounterEvents();
+function formatStartTime(iso: string | null): string {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+export function Dashboard({ replayEncounterId }: { replayEncounterId?: string }) {
+  const {
+    state,
+    missingInfo,
+    suggestedFollowUps,
+    startEncounter,
+    requestHandoff,
+    pushTranscript,
+    readOnly,
+  } = useEncounterEvents({ replayEncounterId });
   const [handoffOpen, setHandoffOpen] = useState(false);
 
   const handleHandoff = async () => {
     setHandoffOpen(true);
-    await requestHandoff();
+    if (!readOnly) {
+      await requestHandoff();
+    }
   };
+
+  const loadingReplay = readOnly && !state.encounterId;
+
+  if (loadingReplay) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500">
+        Loading session…
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       <DisclaimerBanner />
 
+      {readOnly && (
+        <div className="bg-slate-800 text-slate-100 px-6 py-2 text-sm flex items-center justify-between gap-4">
+          <span>
+            <span className="font-semibold text-amber-300">Replay mode</span>
+            {" — "}
+            {state.startedAt
+              ? `Session from ${formatStartTime(state.startedAt)}`
+              : "Viewing archived session"}
+            . Recordings disabled.
+          </span>
+          <div className="flex items-center gap-3 shrink-0">
+            <Link
+              href="/logs"
+              className="text-slate-300 hover:text-white underline-offset-2 hover:underline"
+            >
+              ← All sessions
+            </Link>
+            <Link
+              href="/"
+              className="px-3 py-1 rounded-md bg-ambulance-600 text-white text-xs font-semibold hover:bg-ambulance-500"
+            >
+              New Session
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="bg-ambulance-900 text-white px-6 py-3 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-3">
-          <span className="text-2xl" aria-hidden>🚑</span>
+          <span className="text-2xl" aria-hidden>
+            🚑
+          </span>
           <div>
             <h1 className="text-xl font-bold tracking-tight">Nos</h1>
-            <p className="text-ambulance-200 text-xs">AI Paramedic Copilot — scene to hospital handoff</p>
+            <p className="text-ambulance-200 text-xs">
+              AI Paramedic Copilot — scene to hospital handoff
+            </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Connection status */}
-          <span
-            className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-              state.connected
-                ? "bg-emerald-500/20 text-emerald-300"
-                : "bg-red-500/20 text-red-300 animate-pulse"
-            }`}
-          >
-            {state.connected ? "● Connected" : "○ Reconnecting…"}
-          </span>
+          {!readOnly && (
+            <>
+              <span
+                className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                  state.connected
+                    ? "bg-emerald-500/20 text-emerald-300"
+                    : "bg-red-500/20 text-red-300 animate-pulse"
+                }`}
+              >
+                {state.connected ? "● Connected" : "○ Reconnecting…"}
+              </span>
 
-          {/* Mode toggle */}
-          <div className="flex rounded-lg overflow-hidden border border-ambulance-700">
-            <button
-              onClick={() => startEncounter("demo")}
-              disabled={state.mode === "demo" && state.loading}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                state.mode === "demo"
-                  ? "bg-ambulance-500 text-white"
-                  : "bg-ambulance-800 text-ambulance-100 hover:bg-ambulance-700"
-              }`}
-            >
-              {state.mode === "demo" && state.loading ? "Running…" : "Demo"}
-            </button>
-            <button
-              onClick={() => startEncounter("live")}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                state.mode === "live"
-                  ? "bg-ambulance-500 text-white"
-                  : "bg-ambulance-800 text-ambulance-100 hover:bg-ambulance-700"
-              }`}
-            >
-              Live
-            </button>
-          </div>
+              <Link
+                href="/logs"
+                className="px-3 py-2 text-sm font-medium rounded-lg bg-ambulance-800 text-ambulance-100 hover:bg-ambulance-700 border border-ambulance-700 transition-colors"
+              >
+                Session Log
+              </Link>
 
-          <LiveMic active={state.mode === "live"} onTranscript={pushTranscript} />
+              <div className="flex rounded-lg overflow-hidden border border-ambulance-700">
+                <button
+                  onClick={() => startEncounter("demo")}
+                  disabled={state.mode === "demo" && state.loading}
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${
+                    state.mode === "demo"
+                      ? "bg-ambulance-500 text-white"
+                      : "bg-ambulance-800 text-ambulance-100 hover:bg-ambulance-700"
+                  }`}
+                >
+                  {state.mode === "demo" && state.loading ? "Running…" : "Demo"}
+                </button>
+                <button
+                  onClick={() => startEncounter("live")}
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${
+                    state.mode === "live"
+                      ? "bg-ambulance-500 text-white"
+                      : "bg-ambulance-800 text-ambulance-100 hover:bg-ambulance-700"
+                  }`}
+                >
+                  Live
+                </button>
+              </div>
+
+              <LiveMic active={state.mode === "live"} onTranscript={pushTranscript} />
+            </>
+          )}
+
+          {readOnly && (
+            <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-slate-500/30 text-slate-200">
+              Archived
+            </span>
+          )}
         </div>
       </header>
 
       {/* ── Agent activity strip ────────────────────────────────────────────── */}
-      <div className="bg-clinical-950 border-b border-clinical-800 px-6 py-1.5 flex items-center gap-4">
-        <span className="text-xs text-clinical-400 font-medium mr-1">AGENTS</span>
-        {Object.entries(AGENT_LABELS).map(([key, label]) => {
-          const active = state.activeAgents.has(key);
-          return (
-            <div key={key} className="flex items-center gap-1.5">
-              <span
-                className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${
-                  active ? "bg-emerald-400 shadow-[0_0_6px_2px_rgba(52,211,153,0.6)]" : "bg-clinical-700"
-                }`}
-              />
-              <span
-                className={`text-xs font-medium transition-colors ${
-                  active ? "text-emerald-300" : "text-clinical-500"
-                }`}
-              >
-                {label}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      {!readOnly && (
+        <div className="bg-clinical-950 border-b border-clinical-800 px-6 py-1.5 flex items-center gap-4">
+          <span className="text-xs text-clinical-400 font-medium mr-1">AGENTS</span>
+          {Object.entries(AGENT_LABELS).map(([key, label]) => {
+            const active = state.activeAgents.has(key);
+            return (
+              <div key={key} className="flex items-center gap-1.5">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${
+                    active
+                      ? "bg-emerald-400 shadow-[0_0_6px_2px_rgba(52,211,153,0.6)]"
+                      : "bg-clinical-700"
+                  }`}
+                />
+                <span
+                  className={`text-xs font-medium transition-colors ${
+                    active ? "text-emerald-300" : "text-clinical-500"
+                  }`}
+                >
+                  {label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Entity chips bar ────────────────────────────────────────────────── */}
       {state.entities && hasAnyEntities(state.entities) && (
@@ -169,7 +251,12 @@ export function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-            <VisionCapture active />
+            <VisionCapture
+              active={!readOnly}
+              readOnly={readOnly}
+              encounterId={state.encounterId}
+              visionItems={state.visionItems}
+            />
           </div>
           <div className="lg:col-span-8 bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
             <SoapPanel soap={state.soap} />
@@ -187,7 +274,7 @@ export function Dashboard() {
           disabled={state.transcript.length === 0}
           className="px-6 py-2.5 rounded-lg bg-ambulance-600 text-white font-semibold text-sm hover:bg-ambulance-700 active:bg-ambulance-800 disabled:opacity-40 disabled:cursor-not-allowed shadow-md transition-colors shrink-0"
         >
-          Generate Handoff Report
+          {readOnly ? "View Handoff Report" : "Generate Handoff Report"}
         </button>
       </footer>
 
@@ -196,7 +283,7 @@ export function Dashboard() {
         onClose={() => setHandoffOpen(false)}
         transcript={state.transcript}
         report={state.handoff}
-        loading={state.loading && !state.handoff}
+        loading={!readOnly && state.loading && !state.handoff}
       />
     </div>
   );

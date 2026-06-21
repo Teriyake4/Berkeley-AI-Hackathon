@@ -1,4 +1,4 @@
-import type { TranscriptLine } from "@/hooks/useEncounterEvents";
+import type { TranscriptLine } from "@/types/session";
 
 const speakerStyles: Record<string, string> = {
   paramedic: "bg-clinical-100 text-clinical-900",
