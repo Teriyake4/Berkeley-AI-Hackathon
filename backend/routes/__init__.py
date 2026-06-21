@@ -243,3 +243,61 @@ async def request_handoff(request: Request):
     })
 
     return JSONResponse({"encounterId": encounter_id, "status": "handoff_requested"})
+
+
+# ── Audio event (manual stub for live mode) ─────────────────────────────────
+
+@router.post("/api/audio-event")
+async def post_audio_event(request: Request):
+    await ensure_agents_started()
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid JSON"}, status_code=400)
+
+    encounter_id: str = body.get("encounterId") or ENCOUNTER_ID
+    event_type: str = body.get("type", "")
+    detail: str | None = body.get("detail")
+
+    if not event_type:
+        return JSONResponse({"error": "type required"}, status_code=400)
+
+    bus = get_event_bus()
+    await bus.publish(EVENT_CHANNELS.AUDIO_EVENT, {
+        "encounterId": encounter_id,
+        "type": event_type,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "detail": detail,
+    })
+
+    return JSONResponse({"ok": True})
+
+
+# ── Telemetry (manual stub for live mode) ───────────────────────────────────
+
+@router.post("/api/telemetry")
+async def post_telemetry(request: Request):
+    await ensure_agents_started()
+
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"error": "invalid JSON"}, status_code=400)
+
+    encounter_id: str = body.get("encounterId") or ENCOUNTER_ID
+    event: str = body.get("event", "")
+    label: str | None = body.get("label")
+
+    if not event:
+        return JSONResponse({"error": "event required"}, status_code=400)
+
+    bus = get_event_bus()
+    await bus.publish(EVENT_CHANNELS.TELEMETRY_UPDATED, {
+        "encounterId": encounter_id,
+        "event": event,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "label": label,
+    })
+
+    return JSONResponse({"ok": True})

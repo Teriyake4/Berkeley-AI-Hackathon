@@ -194,7 +194,7 @@ First read ER_Copilot_Hackathon_Plan.md and docs/DEV_A.md.
 
 **Launch prompt:**
 ```
-You are Contract Lead on Ambulance Copilot (Dev A, Agent 0).
+You are Contract Lead on Nos (Dev A, Agent 0).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_A.md.
 Extend lib/events.ts and backend/events.py with audio.event, telemetry.updated, and vision.captured.
 Add paramedic/patient/bystander speakers. Mirror in Python. Minimal diff. Do not touch other files.
@@ -204,7 +204,7 @@ Add paramedic/patient/bystander speakers. Mirror in Python. Minimal diff. Do not
 
 **Launch prompt:**
 ```
-You are Bus & SSE agent on Ambulance Copilot (Dev A, Agent 1).
+You are Bus & SSE agent on Nos (Dev A, Agent 1).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_A.md. Harden backend/bus.py, sse hub, and lib/bus.ts.
 Ensure GET /api/events fans out all event channels. Redis optional with in-memory fallback.
 ```
@@ -213,7 +213,7 @@ Ensure GET /api/events fans out all event channels. Redis optional with in-memor
 
 **Launch prompt:**
 ```
-You are Demo Script agent on Ambulance Copilot (Dev A, Agent 2).
+You are Demo Script agent on Nos (Dev A, Agent 2).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_A.md. Rewrite scripts/demo-scenario.json and backend/demo/injector.py for paramedic/patient ambulance call.
 Include telemetry.updated and at least one audio.event. POST /api/encounter demo mode must replay end-to-end.
 ```
@@ -222,7 +222,7 @@ Include telemetry.updated and at least one audio.event. POST /api/encounter demo
 
 **Launch prompt:**
 ```
-You are Deepgram agent on Ambulance Copilot (Dev A, Agent 3).
+You are Deepgram agent on Nos (Dev A, Agent 3).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_A.md. Implement live mic → transcript.segment with paramedic/patient speakers.
 Use Deepgram if DEEPGRAM_API_KEY set; graceful fallback otherwise.
 ```
@@ -231,7 +231,7 @@ Use Deepgram if DEEPGRAM_API_KEY set; graceful fallback otherwise.
 
 **Launch prompt:**
 ```
-You are Audio Events agent on Ambulance Copilot (Dev A, Agent 4).
+You are Audio Events agent on Nos (Dev A, Agent 4).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_A.md. Implement audio.event publishing per lib/events.ts contract.
 Demo: ensure injector fires equipment_alarm or prolonged_silence. Live: stub POST endpoint or silence timer.
 ```
@@ -240,7 +240,7 @@ Demo: ensure injector fires equipment_alarm or prolonged_silence. Live: stub POS
 
 **Launch prompt:**
 ```
-You are Telemetry agent on Ambulance Copilot (Dev A, Agent 5).
+You are Telemetry agent on Nos (Dev A, Agent 5).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_A.md. Implement telemetry.updated events and POST /api/telemetry stub.
 Ensure demo scenario injects scene_arrival and patient_contact.
 ```
@@ -249,7 +249,7 @@ Ensure demo scenario injects scene_arrival and patient_contact.
 
 **Launch prompt:**
 ```
-You are Integration agent on Ambulance Copilot (Dev A, Agent 6).
+You are Integration agent on Nos (Dev A, Agent 6).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_A.md. Run demo end-to-end: POST /api/encounter demo, verify SSE receives transcript.segment, audio.event, telemetry.updated.
 Fix only Dev A owned files. Report pass/fail per channel.
 ```

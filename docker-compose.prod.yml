@@ -1,16 +1,4 @@
 services:
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
   backend:
     build:
       context: ./backend
@@ -21,10 +9,8 @@ services:
       - path: .env
         required: false
     environment:
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      redis:
-        condition: service_healthy
+      # No local Redis — use Redis Cloud or external Redis via .env
+      - REDIS_URL=${REDIS_URL:-}
     volumes:
       - ./backend:/app
       - /app/__pycache__
@@ -42,12 +28,7 @@ services:
       - PYTHON_BACKEND_URL=http://backend:8000
       # Don't use Redis Cloud URL from .env — frontend proxies to Python backend
       - REDIS_URL=
-    depends_on:
-      - backend
     volumes:
       - .:/app
       - /app/node_modules
       - /app/.next
-
-volumes:
-  redis_data:

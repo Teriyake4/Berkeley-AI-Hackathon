@@ -32,7 +32,7 @@ export function LiveMic({
   const [mode, setMode] = useState<Mode>("idle");
   const [error, setError] = useState<string | null>(null);
   // Maps Deepgram speaker index → our speaker label. Can be toggled during demo.
-  const [speakerMap, setSpeakerMap] = useState<Record<number, Speaker>>({ 0: "doctor", 1: "patient" });
+  const [speakerMap, setSpeakerMap] = useState<Record<number, Speaker>>({ 0: "paramedic", 1: "patient" });
 
   const socketRef = useRef<WebSocket | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -196,8 +196,8 @@ export function LiveMic({
   const swapSpeakers = useCallback(() => {
     setSpeakerMap((prev) => ({
       ...prev,
-      0: prev[0] === "doctor" ? "patient" : "doctor",
-      1: prev[1] === "patient" ? "doctor" : "patient",
+      0: prev[0] === "paramedic" ? "patient" : "paramedic",
+      1: prev[1] === "patient" ? "paramedic" : "patient",
     }));
   }, []);
 

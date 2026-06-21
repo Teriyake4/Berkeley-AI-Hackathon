@@ -9,16 +9,18 @@ from typing import List
 from events import MedicalEntities, SoapNote, TimelineEntry
 
 
-DOCUMENTATION_SYSTEM = """You are a clinical documentation agent generating a SOAP note. For demo purposes only — not for clinical use.
+DOCUMENTATION_SYSTEM = """You are a clinical documentation agent for Nos, a pre-hospital EMS/ambulance AI assistant. For demo purposes only — not for clinical use.
+
+Generate a live SOAP note from paramedic-patient scene dialogue.
 
 Return ONLY a raw JSON object (no markdown):
 { "subjective": string, "objective": string, "assessment": string, "plan": string }
 
 Guidelines:
-- Subjective: Chief complaint, HPI including onset/duration/location/quality/radiation/associated symptoms, PMH, medications, allergies
-- Objective: Vitals and exam findings documented (if none yet, note "pending")
-- Assessment: Differential with most likely at top
-- Plan: Diagnostic workup and initial treatment steps, respecting anticoagulation status"""
+- Subjective: Chief complaint and HPI (onset, duration, location, quality, radiation, associated symptoms), ALLERGIES first and prominently, current medications, PMH — all from stated scene facts only
+- Objective: Vitals documented on scene (BP, HR, SpO2, RR); if not yet taken note "pending on scene"
+- Assessment: Working impression using "consider …" / "verify …" language — no diagnosis; respect anticoagulation status
+- Plan: Immediate pre-hospital interventions and handoff priorities; cite anticoagulation before any antiplatelet recommendation"""
 
 
 def build_documentation_prompt(

@@ -74,7 +74,7 @@ components/LiveMic.tsx
 
 | # | Task | Done when |
 |---|------|-----------|
-| 1 | Rebrand UI: **Ambulance Copilot**, paramedic/patient speakers | Static fixture looks like field tool |
+| 1 | Rebrand UI: **Nos**, paramedic/patient speakers | Static fixture looks like field tool |
 | 2 | Wire `useEncounterEvents` to SSE | Demo updates all panels |
 | 3 | Timeline: render **GPS**, **audio events**, **vision** entries | Multimodal timeline visible |
 | 4 | **Research agent** + Browserbase | Warfarin beat → citations in insights |
@@ -238,15 +238,15 @@ First read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md.
 
 **Launch prompt:**
 ```
-You are Dashboard Shell agent on Ambulance Copilot (Dev C, Agent 1).
-Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Rebrand UI to Ambulance Copilot; render fixtures/full-encounter-state.json statically.
+You are Dashboard Shell agent on Nos (Dev C, Agent 1).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Rebrand UI to Nos; render fixtures/full-encounter-state.json statically.
 ```
 
 ### Agent 2 — Event Reducer & SSE Hook
 
 **Launch prompt:**
 ```
-You are Event Reducer agent on Ambulance Copilot (Dev C, Agent 2).
+You are Event Reducer agent on Nos (Dev C, Agent 2).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Implement hooks/useEncounterEvents.ts for all event channels including audio.event, telemetry.updated, vision.captured.
 ```
 
@@ -254,7 +254,7 @@ Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Implement hooks/useEncounte
 
 **Launch prompt:**
 ```
-You are Multimodal Timeline UI agent on Ambulance Copilot (Dev C, Agent 3).
+You are Multimodal Timeline UI agent on Nos (Dev C, Agent 3).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Extend TimelinePanel + TelemetryBar for GPS, audio, and vision entries.
 ```
 
@@ -262,7 +262,7 @@ Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Extend TimelinePanel + Tele
 
 **Launch prompt:**
 ```
-You are Research agent on Ambulance Copilot (Dev C, Agent 4).
+You are Research agent on Nos (Dev C, Agent 4).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Implement backend/agents/research.py with Browserbase when keyed, fallback otherwise.
 ```
 
@@ -270,7 +270,7 @@ Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Implement backend/agents/re
 
 **Launch prompt:**
 ```
-You are Vision Capture agent on Ambulance Copilot (Dev C, Agent 5).
+You are Vision Capture agent on Nos (Dev C, Agent 5).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Create VisionCapture.tsx, POST /api/vision, publish vision.captured.
 ```
 
@@ -278,7 +278,7 @@ Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Create VisionCapture.tsx, P
 
 **Launch prompt:**
 ```
-You are Handoff agent on Ambulance Copilot (Dev C, Agent 6).
+You are Handoff agent on Nos (Dev C, Agent 6).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Implement handoff agent + HandoffModal before/after split. End demo on this screen.
 ```
 
@@ -286,7 +286,7 @@ Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Implement handoff agent + H
 
 **Launch prompt:**
 ```
-You are Insights Polish agent on Ambulance Copilot (Dev C, Agent 7).
+You are Insights Polish agent on Nos (Dev C, Agent 7).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Polish InsightsPanel: safety colors, NREMT reminders, research citations.
 ```
 
@@ -294,6 +294,6 @@ Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Polish InsightsPanel: safet
 
 **Launch prompt:**
 ```
-You are Demo Integration agent on Ambulance Copilot (Dev C, Agent 8).
+You are Demo Integration agent on Nos (Dev C, Agent 8).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Verify full 5-min demo flow; polish ModeToggle. Fix only Dev C files.
 ```

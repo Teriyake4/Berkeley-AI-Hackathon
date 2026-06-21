@@ -4,7 +4,7 @@ Redis key conventions — mirrors lib/redis/keys.ts.
 
 ENCOUNTER_ID = "demo-encounter-001"
 
-PUBSUB_PREFIX = "er-copilot:"
+PUBSUB_PREFIX = "nos:"
 
 
 def encounter_key(encounter_id: str, suffix: str) -> str:

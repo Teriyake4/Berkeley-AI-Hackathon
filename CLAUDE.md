@@ -197,7 +197,7 @@ First read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md.
 
 **Launch prompt:**
 ```
-You are LLM & Debounce agent on Ambulance Copilot (Dev B, Agent 0).
+You are LLM & Debounce agent on Nos (Dev B, Agent 0).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Implement backend/claude.py, debounce.py, lib/claude.ts, lib/debounce.ts.
 ```
 
@@ -205,7 +205,7 @@ Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Implement backend/claude.py
 
 **Launch prompt:**
 ```
-You are Extraction agent on Ambulance Copilot (Dev B, Agent 1).
+You are Extraction agent on Nos (Dev B, Agent 1).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Tune extraction for ambulance dialogue. Allergies mandatory in schema and merge.
 ```
 
@@ -213,7 +213,7 @@ Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Tune extraction for ambulan
 
 **Launch prompt:**
 ```
-You are Safety agent on Ambulance Copilot (Dev B, Agent 2).
+You are Safety agent on Nos (Dev B, Agent 2).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Implement missed follow-up timer, NREMT reminders, warfarin+chest pain flag, vision.captured med cross-check.
 Only flag stated facts — never age-alone inference.
 ```
@@ -222,7 +222,7 @@ Only flag stated facts — never age-alone inference.
 
 **Launch prompt:**
 ```
-You are Timeline agent on Ambulance Copilot (Dev B, Agent 3).
+You are Timeline agent on Nos (Dev B, Agent 3).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Consume facts.extracted, safety.flagged, audio.event, telemetry.updated, vision.captured. Publish timeline.updated.
 ```
 
@@ -230,7 +230,7 @@ Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Consume facts.extracted, sa
 
 **Launch prompt:**
 ```
-You are Documentation agent on Ambulance Copilot (Dev B, Agent 4).
+You are Documentation agent on Nos (Dev B, Agent 4).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Maintain live SOAP/PCR from facts + timeline. Allergies prominent when stated.
 ```
 
@@ -238,7 +238,7 @@ Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Maintain live SOAP/PCR from
 
 **Launch prompt:**
 ```
-You are Vision Consumer agent on Ambulance Copilot (Dev B, Agent 5).
+You are Vision Consumer agent on Nos (Dev B, Agent 5).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Subscribe to vision.captured; cross-check scanned meds against facts.extracted.
 ```
 
@@ -246,6 +246,6 @@ Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Subscribe to vision.capture
 
 **Launch prompt:**
 ```
-You are Integration agent on Ambulance Copilot (Dev B, Agent 6).
+You are Integration agent on Nos (Dev B, Agent 6).
 Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Wire backend/agents/runtime.py subscriptions. Run demo replay; verify facts, safety, timeline, note events.
 ```
