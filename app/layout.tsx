@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ER Copilot — AI Clinical Operations Assistant",
-  description: "Real-time AI teammate for clinicians",
+  title: "Nos — AI Paramedic Copilot",
+  description: "Real-time AI teammate for paramedics — scene to hospital handoff",
 };
 
 export default function RootLayout({

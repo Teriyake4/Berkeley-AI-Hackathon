@@ -1,29 +1,38 @@
 {
   "encounterId": "demo-encounter-001",
   "transcript": [
-    { "speaker": "doctor", "text": "Good morning. I'm Dr. Chen. What brings you in today?", "timestamp": "2026-06-20T08:12:00.000Z" },
+    { "speaker": "paramedic", "text": "Ma'am, I'm Alex with county EMS. Can you tell me what happened?", "timestamp": "2026-06-20T08:12:00.000Z" },
     { "speaker": "patient", "text": "I've had chest pain for about two hours. It started suddenly while I was gardening.", "timestamp": "2026-06-20T08:12:30.000Z" },
-    { "speaker": "doctor", "text": "Can you tell me your age and any medical history?", "timestamp": "2026-06-20T08:13:00.000Z" },
-    { "speaker": "patient", "text": "I'm 67. I have hypertension — been on lisinopril for years.", "timestamp": "2026-06-20T08:13:30.000Z" },
-    { "speaker": "doctor", "text": "Any other medications? Blood thinners?", "timestamp": "2026-06-20T08:14:00.000Z" },
-    { "speaker": "patient", "text": "Yes, I take warfarin for a heart valve replacement.", "timestamp": "2026-06-20T08:14:30.000Z" }
+    { "speaker": "paramedic", "text": "Do you have any allergies to medications? Any current medications or medical history?", "timestamp": "2026-06-20T08:13:00.000Z" },
+    { "speaker": "patient", "text": "I'm allergic to penicillin — I get a rash. I take lisinopril for my blood pressure.", "timestamp": "2026-06-20T08:13:30.000Z" },
+    { "speaker": "paramedic", "text": "Any blood thinners or heart medications?", "timestamp": "2026-06-20T08:14:00.000Z" },
+    { "speaker": "patient", "text": "Yes, warfarin. I had a heart valve replacement three years ago.", "timestamp": "2026-06-20T08:14:30.000Z" },
+    { "speaker": "paramedic", "text": "I found a medication bag at the scene. Let me check what's in here before we arrive.", "timestamp": "2026-06-20T08:18:00.000Z" },
+    { "speaker": "console", "text": "Observing — aspirin 325mg identified.", "timestamp": "2026-06-20T08:18:10.000Z" }
   ],
   "facts": {
     "medications": [
-      { "name": "lisinopril" },
-      { "name": "warfarin", "dose": "unknown" }
+      { "name": "lisinopril", "source": "stated" },
+      { "name": "warfarin", "source": "stated" },
+      { "name": "aspirin 325mg", "source": "vision" }
     ],
     "conditions": ["hypertension", "heart valve replacement"],
-    "allergies": [],
-    "vitals": {},
+    "allergies": ["penicillin"],
+    "vitals": { "bp": "158/94", "hr": "92", "spo2": "96%" },
     "symptoms": ["chest pain", "shortness of breath", "left arm pain"],
-    "demographics": { "age": 67, "sex": "male" }
+    "demographics": { "age": 67, "sex": "female" }
   },
   "timeline": [
+    { "id": "telemetry-scene_arrival", "timestamp": "2026-06-20T08:11:30.000Z", "summary": "Scene Arrival — Residential address, garden setting", "source": "telemetry" },
     { "id": "tl-1", "timestamp": "2026-06-20T08:12:30.000Z", "summary": "Patient reports acute chest pain, 2hr duration, exertional onset", "source": "extraction" },
-    { "id": "tl-2", "timestamp": "2026-06-20T08:13:30.000Z", "summary": "Hypertension history identified; lisinopril", "source": "extraction" },
-    { "id": "tl-3", "timestamp": "2026-06-20T08:14:30.000Z", "summary": "Warfarin medication discovered", "source": "extraction" },
-    { "id": "tl-4", "timestamp": "2026-06-20T08:14:35.000Z", "summary": "Safety: Anticoagulation + chest pain — ACS workup indicated", "source": "safety" }
+    { "id": "tl-2", "timestamp": "2026-06-20T08:13:30.000Z", "summary": "Penicillin allergy + lisinopril (hypertension) documented", "source": "extraction" },
+    { "id": "tl-3", "timestamp": "2026-06-20T08:14:30.000Z", "summary": "Warfarin + mechanical heart valve discovered", "source": "extraction" },
+    { "id": "safety-warfarin", "timestamp": "2026-06-20T08:14:35.000Z", "summary": "⚠ Anticoagulation + chest pain — ACS workup indicated", "source": "safety" },
+    { "id": "audio-monitor_tone", "timestamp": "2026-06-20T08:15:18.000Z", "summary": "Monitor Tone — 12-lead ECG acquisition", "source": "audio" },
+    { "id": "telemetry-en_route", "timestamp": "2026-06-20T08:16:10.000Z", "summary": "En Route — County General, ETA 8 minutes", "source": "telemetry" },
+    { "id": "vision-aspirin", "timestamp": "2026-06-20T08:18:10.000Z", "summary": "Vision: aspirin 325mg identified", "source": "vision" },
+    { "id": "safety-aspirin", "timestamp": "2026-06-20T08:18:12.000Z", "summary": "⚠ Vision scan: aspirin 325mg — patient is on warfarin (bleeding risk)", "source": "safety" },
+    { "id": "telemetry-hospital_arrival", "timestamp": "2026-06-20T08:20:00.000Z", "summary": "Hospital Arrival — County General ED bay 3", "source": "telemetry" }
   ],
   "safetyFlags": [
     {
@@ -31,37 +40,59 @@
       "severity": "high",
       "rationale": "Patient on warfarin presenting with chest pain and left arm radiation. Balance bleeding vs thrombotic risk.",
       "flaggedAt": "2026-06-20T08:14:35.000Z"
+    },
+    {
+      "concern": "Vision scan: aspirin 325mg — patient is on warfarin (bleeding risk)",
+      "severity": "high",
+      "rationale": "Vial scan identified 'aspirin 325mg' on scene. Patient has documented warfarin therapy. Concurrent aspirin + warfarin significantly increases GI and intracranial bleeding risk. Verify before administration.",
+      "flaggedAt": "2026-06-20T08:18:12.000Z"
+    },
+    {
+      "concern": "NREMT gap: Last oral intake not yet documented (SAMPLE history)",
+      "severity": "low",
+      "rationale": "NREMT primary assessment: Last oral intake not yet documented (SAMPLE history). Ensure this is addressed before transport.",
+      "flaggedAt": "2026-06-20T08:14:40.000Z"
     }
   ],
   "soap": {
-    "subjective": "67M with 2hr acute chest pain, exertional onset, left arm radiation, mild SOB. PMH: HTN, mechanical heart valve. Meds: lisinopril, warfarin.",
-    "objective": "Pending: ECG, troponin. Vitals not yet documented.",
-    "assessment": "Acute chest pain concerning for ACS in anticoagulated patient with cardiac history.",
-    "plan": "ECG, troponin, aspirin (consider bleeding risk), cardiology consult."
+    "subjective": "67F with 2hr acute chest pain, exertional onset, left arm radiation, mild SOB. PMH: HTN, mechanical heart valve. Meds: lisinopril, warfarin. Allergy: penicillin.",
+    "objective": "BP 158/94, HR 92, SpO2 96% on room air → 98% on 4L NC. 12-lead ECG: sinus rhythm. Aspirin 325mg vial identified on scene via camera.",
+    "assessment": "Acute chest pain concerning for ACS in anticoagulated patient with mechanical valve and cardiac history.",
+    "plan": "Supplemental O2, IV access, continuous monitoring. Transport to County General. ED: ECG, troponin, weigh bleeding vs thrombotic risk before antiplatelet. Withhold aspirin pending physician review (warfarin interaction)."
   },
   "research": {
-    "query": "warfarin chest pain anticoagulation ACS",
-    "findings": "Anticoagulated patients with ACS require careful balance of antithrombotic therapy. Warfarin may need reversal depending on bleeding risk.",
+    "query": "warfarin chest pain ACS",
+    "findings": "Warfarin-treated patients presenting with ACS require careful balance of antithrombotic therapy. INR monitoring is critical before initiating additional antiplatelet agents.",
     "citations": [
-      { "title": "ACCF/AHA Guidelines — Anticoagulation in ACS", "url": "https://example.com/guideline", "snippet": "Management of anticoagulated patients with ACS..." }
+      { "title": "2023 ACC/AHA Guideline for Diagnosis and Management of Acute Coronary Syndromes", "url": "https://www.acc.org/clinical-topics/acute-coronary-syndrome", "snippet": "For patients on oral anticoagulation presenting with ACS, individualized decision-making is required for antiplatelet co-therapy." },
+      { "title": "Warfarin Drug Interactions — FDA Prescribing Information", "url": "https://www.accessdata.fda.gov/drugsatfda_docs/label/2011/009218s108lbl.pdf", "snippet": "Increased bleeding risk with concurrent antiplatelet agents. Monitor INR closely when aspirin is co-administered." }
     ]
   },
   "handoff": {
-    "patientSummary": "67-year-old male with acute chest pain (2hr), HTN, mechanical heart valve on warfarin and lisinopril.",
-    "timeline": [],
+    "patientSummary": "67-year-old female presenting with 2-hour acute chest pain (exertional onset, left arm radiation, mild SOB). PMH: hypertension, mechanical heart valve. Medications: lisinopril, warfarin. Camera identified an aspirin 325mg vial on scene.",
+    "allergies": ["penicillin"],
+    "timeline": [
+      { "id": "tl-1", "timestamp": "2026-06-20T08:12:30.000Z", "summary": "Acute chest pain, 2hr, exertional onset", "source": "extraction" },
+      { "id": "tl-3", "timestamp": "2026-06-20T08:14:30.000Z", "summary": "Warfarin + mechanical heart valve", "source": "extraction" },
+      { "id": "vision-aspirin", "timestamp": "2026-06-20T08:18:10.000Z", "summary": "Aspirin 325mg identified on scene (camera)", "source": "extraction" }
+    ],
     "currentMedications": [
-      { "name": "lisinopril" },
-      { "name": "warfarin" }
+      { "name": "lisinopril", "source": "stated" },
+      { "name": "warfarin", "source": "stated" },
+      { "name": "aspirin 325mg", "source": "vision" }
     ],
     "outstandingQuestions": [
-      "Current INR?",
-      "Any prior cardiac interventions beyond valve replacement?",
-      "Full pain characterization (quality, severity 1-10)?"
+      "Current INR value?",
+      "Last warfarin dose and time?",
+      "Pain severity 1-10?",
+      "Has the patient taken aspirin today?"
     ],
     "recommendedActions": [
-      "Stat ECG and troponin",
-      "Cardiology consult",
-      "Assess bleeding vs thrombotic risk before additional antiplatelet therapy"
+      "Stat ECG — review for ST changes",
+      "Serial troponins (0h, 3h, 6h)",
+      "Cardiology consult stat",
+      "Check INR before initiating antiplatelet therapy — weigh bleed vs thrombosis risk",
+      "Confirm no penicillin/cephalosporin ordered (allergy documented)"
     ],
     "generatedAt": "2026-06-20T08:20:00.000Z"
   }

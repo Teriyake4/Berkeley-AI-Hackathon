@@ -1,9 +1,21 @@
 import type { TimelineEntry } from "@/types/events";
 
 const sourceStyles: Record<string, string> = {
-  safety: "bg-red-500 ring-red-200",
   extraction: "bg-clinical-500 ring-clinical-100",
+  safety: "bg-red-500 ring-red-200",
+  telemetry: "bg-indigo-500 ring-indigo-100",
+  audio: "bg-purple-500 ring-purple-100",
+  vision: "bg-emerald-500 ring-emerald-100",
   manual: "bg-slate-400 ring-slate-100",
+};
+
+const sourceIcons: Record<string, string> = {
+  extraction: "🩺",
+  safety: "🚨",
+  telemetry: "📍",
+  audio: "🔊",
+  vision: "📷",
+  manual: "✎",
 };
 
 export function TimelinePanel({ events }: { events: TimelineEntry[] }) {
@@ -12,7 +24,7 @@ export function TimelinePanel({ events }: { events: TimelineEntry[] }) {
   return (
     <div className="flex flex-col h-full">
       <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-2">
-        Patient Timeline
+        Encounter Timeline
         {events.length > 0 && (
           <span className="ml-auto text-xs font-normal text-slate-400 normal-case">
             {events.length} event{events.length !== 1 ? "s" : ""}
@@ -25,8 +37,10 @@ export function TimelinePanel({ events }: { events: TimelineEntry[] }) {
         ) : (
           <ol className="relative border-l-2 border-clinical-100 ml-2 space-y-4">
             {sorted.map((event) => {
-              const dot = sourceStyles[event.source ?? "extraction"] ?? sourceStyles.extraction;
-              const isSafety = event.source === "safety";
+              const src = (event.source as string) ?? "extraction";
+              const dot = sourceStyles[src] ?? sourceStyles.extraction;
+              const icon = sourceIcons[src] ?? sourceIcons.extraction;
+              const isSafety = src === "safety";
               return (
                 <li key={event.id} className="ml-5 animate-fade-in">
                   <span
@@ -39,13 +53,14 @@ export function TimelinePanel({ events }: { events: TimelineEntry[] }) {
                     })}
                   </time>
                   <p
-                    className={`text-sm mt-0.5 leading-snug ${
-                      isSafety
-                        ? "text-red-700 font-semibold"
-                        : "text-slate-800"
+                    className={`text-sm mt-0.5 leading-snug flex items-start gap-1.5 ${
+                      isSafety ? "text-red-700 font-semibold" : "text-slate-800"
                     }`}
                   >
-                    {isSafety ? event.summary : event.summary.replace(/^⚠\s*/, "")}
+                    <span className="shrink-0 leading-snug" aria-hidden>
+                      {icon}
+                    </span>
+                    <span>{isSafety ? event.summary : event.summary.replace(/^⚠\s*/, "")}</span>
                   </p>
                 </li>
               );

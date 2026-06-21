@@ -11,6 +11,7 @@ from typing import Callable, Dict, List, Optional
 
 import httpx
 
+from browserbase import browserbase_search, has_browserbase
 from bus import InMemoryBus, RedisBus
 from events import EVENT_CHANNELS, Citation, MedicalEntities, entities_from_dict, to_dict
 from redis_layer.keys import EncounterKeys
@@ -182,26 +183,41 @@ async def _research_medications(
         )
 
         mock = MOCK_CITATIONS.get(key)
-        pubmed_cites = await pubmed_search(med.name, context)
 
-        if pubmed_cites:
+        # Source priority: live Browserbase (when keyed) → PubMed → curated mock.
+        bb_cites = (
+            await browserbase_search(f"{med.name} {context} drug interaction guideline")
+            if has_browserbase()
+            else None
+        )
+
+        if bb_cites:
             mock_cites: List[Citation] = list(mock["citations"])[:1] if mock else []  # type: ignore[index]
-            citations = mock_cites + pubmed_cites[:2]
+            citations = mock_cites + bb_cites[:2]
             findings = str(mock["findings"]) if mock else (  # type: ignore[index]
-                f"{med.name}: Clinical evidence reviewed. See citations for drug interactions "
-                "and dosing guidelines relevant to the current presentation."
+                f"{med.name}: Live web review via Browserbase. See citations for drug "
+                "interactions and dosing guidance relevant to the current presentation."
             )
         else:
-            citations = list(mock["citations"]) if mock else [  # type: ignore[index]
-                Citation(
-                    title=f"{med.name} — PubMed Search",
-                    url=f"https://pubmed.ncbi.nlm.nih.gov/?term={med.name.replace(' ', '+')}+guidelines",
-                    snippet=f"Search results for {med.name} clinical guidelines.",
+            pubmed_cites = await pubmed_search(med.name, context)
+            if pubmed_cites:
+                mock_cites = list(mock["citations"])[:1] if mock else []  # type: ignore[index]
+                citations = mock_cites + pubmed_cites[:2]
+                findings = str(mock["findings"]) if mock else (  # type: ignore[index]
+                    f"{med.name}: Clinical evidence reviewed. See citations for drug interactions "
+                    "and dosing guidelines relevant to the current presentation."
                 )
-            ]
-            findings = str(mock["findings"]) if mock else (  # type: ignore[index]
-                f"{med.name}: Review contraindications and interactions relevant to current presentation."
-            )
+            else:
+                citations = list(mock["citations"]) if mock else [  # type: ignore[index]
+                    Citation(
+                        title=f"{med.name} — PubMed Search",
+                        url=f"https://pubmed.ncbi.nlm.nih.gov/?term={med.name.replace(' ', '+')}+guidelines",
+                        snippet=f"Search results for {med.name} clinical guidelines.",
+                    )
+                ]
+                findings = str(mock["findings"]) if mock else (  # type: ignore[index]
+                    f"{med.name}: Review contraindications and interactions relevant to current presentation."
+                )
 
         payload = {
             "encounterId": encounter_id,

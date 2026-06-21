@@ -15,6 +15,7 @@ HANDOFF_SYSTEM = """You are generating a formal shift handoff report for an ER e
 Return ONLY a raw JSON object (no markdown):
 {
   "patientSummary": string,
+  "allergies": string[],
   "timeline": [{ "id": string, "timestamp": string, "summary": string, "source": "extraction" }],
   "currentMedications": [{ "name": string, "dose"?: string }],
   "outstandingQuestions": string[],
@@ -24,6 +25,7 @@ Return ONLY a raw JSON object (no markdown):
 
 Requirements:
 - patientSummary: 2-3 sentence clinical summary including demographics, chief complaint, relevant PMH, key meds
+- allergies: list every documented drug/substance allergy (empty array if none stated)
 - timeline: chronological key events (max 8)
 - outstandingQuestions: specific unanswered clinical questions (e.g. "Current INR?")
 - recommendedActions: ordered, specific next steps for incoming clinician

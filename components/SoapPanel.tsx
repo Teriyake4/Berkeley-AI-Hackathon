@@ -11,10 +11,10 @@ export function SoapPanel({ soap }: { soap: SoapNote | null }) {
   return (
     <div>
       <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">
-        Live SOAP Note
+        Live PCR / SOAP Note
       </h2>
       {!soap ? (
-        <p className="text-slate-400 text-sm italic">Documentation agent will populate this…</p>
+        <p className="text-slate-400 text-sm italic">Documentation agent will populate this patient care report…</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {sections.map(({ key, label }) => (

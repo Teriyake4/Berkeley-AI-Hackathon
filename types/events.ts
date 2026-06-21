@@ -13,13 +13,15 @@ export interface TimelineEntry {
   id: string;
   timestamp: string; // ISO 8601
   summary: string;
-  source?: "extraction" | "safety" | "manual";
+  source?: "extraction" | "safety" | "manual" | "telemetry" | "audio" | "vision";
 }
 
 export interface Medication {
   name: string;
   dose?: string;
   frequency?: string;
+  /** Provenance: "stated" verbally vs "vision" identified via camera scan. */
+  source?: "stated" | "vision";
 }
 
 export interface MedicalEntities {
@@ -49,6 +51,7 @@ export interface Citation {
 
 export interface HandoffReport {
   patientSummary: string;
+  allergies?: string[];
   timeline: TimelineEntry[];
   currentMedications: Medication[];
   outstandingQuestions: string[];
