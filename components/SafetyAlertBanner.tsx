@@ -71,9 +71,9 @@ export function SafetyAlertBanner({
             {allergies.map((a) => (
               <span
                 key={a}
-                className="rounded-md bg-white px-2 py-1 text-[11px] font-bold uppercase text-signal-700"
+                className="rounded-md bg-white px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-signal-700"
               >
-                ⚠ {a}
+                {a} allergy
               </span>
             ))}
           </div>
