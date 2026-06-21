@@ -1,94 +1,167 @@
-# Dev A — Voice & Bus
+# Dev A — Platform & Multimodal Ingestion
 
-**Branch:** `dev/a-voice`
+**Branch:** `dev/a-platform`  
+**Mission:** Get every signal into the bus reliably — voice, audio events, GPS, demo replay — and stream it to the browser.
 
-You own everything that gets data *into* the system and *out* to the browser via WebSocket. No Claude calls. No UI components.
+You do **not** touch agent prompts, safety logic, dashboard styling, or Browserbase.
 
 ---
 
 ## Your deliverables
 
-1. Redis client + `EventBus` implementation in `lib/bus.ts` (replace in-memory for production)
-2. WebSocket route at `app/api/ws/route.ts`
-3. Demo Mode injector at `app/api/encounter/route.ts` + `scripts/demo-injector.ts`
-4. Deepgram live mic streaming → `transcript.segment`
-5. Transcript buffer writes to `encounter:{id}:buffer` on each segment
+- [ ] Ambulance demo scenario replays end-to-end (`POST /api/encounter` demo mode)
+- [ ] SSE stream stable (`GET /api/events`)
+- [ ] Live mic → Deepgram (or fallback) with speaker labels: `paramedic` | `patient` | `bystander` | `unknown`
+- [ ] Non-speech **audio events** published to timeline (silence, distress, equipment alarm)
+- [ ] **GPS / telemetry** timestamps injected (scene arrival → patient contact → en route → hospital)
+- [ ] Redis connected for deploy (optional locally)
+- [ ] Full demo runs without manual fixes
+
+---
+
+## Files you own
+
+```
+lib/bus.ts
+lib/redis/**
+lib/demo/**
+lib/sse/**
+lib/agents/runtime.ts
+lib/agents/transcription.ts
+app/api/**                    (except handoff — Dev C owns route if split)
+instrumentation.ts
+scripts/demo-scenario.json    (rewrite for ambulance scenario)
+scripts/run-local-bus.ts
+components/LiveMic.tsx
+backend/main.py               (ingestion routes only — coordinate)
+backend/demo/injector.py
+backend/sse/**
+backend/redis_layer/**
+.env.example                  (REDIS_URL, DEEPGRAM sections)
+```
+
+## Files you do NOT touch
+
+```
+components/**                 (except LiveMic.tsx)
+hooks/**
+lib/agents/extraction.ts
+lib/agents/timeline.ts
+lib/agents/safety.ts
+lib/agents/documentation.ts
+lib/agents/research.ts
+lib/agents/handoff.ts
+lib/prompts/**
+lib/claude.ts
+app/page.tsx
+```
 
 ---
 
 ## Build order
 
-| Order | Task | Done when |
-|-------|------|-----------|
-| 1 | `lib/redis/client.ts` — connect with `REDIS_URL` | `redis.ping()` works |
-| 2 | Extend `lib/bus.ts` — `createRedisBus()` publish/subscribe | Two terminal test: publish → subscribe logs |
-| 3 | `app/api/ws/route.ts` — subscribe all channels, forward to WS clients | Browser DevTools shows events |
-| 4 | Demo injector — read `scripts/demo-scenario.json`, publish segments with delays | POST `/api/encounter` `{mode:"demo"}` triggers replay |
-| 5 | Deepgram WebSocket from browser → API → publish segments | Live mic shows in WebSocket |
-| 6 | Append each segment to Redis buffer key | Dev B can read buffer |
+| # | Task | Done when |
+|---|------|-----------|
+| 1 | Rewrite `scripts/demo-scenario.json` for **ambulance call** | Paramedic + patient dialogue; chest pain + warfarin beats; ends at hospital handoff trigger |
+| 2 | Confirm demo + SSE | All event channels reach browser console |
+| 3 | Deepgram live streaming | Live mode transcribes with speaker diarization |
+| 4 | **Audio events layer** | Publish `audio.event` (or extend timeline) for: prolonged silence (>30s), raised voice/distress, repeated alarm tone |
+| 5 | **GPS / telemetry** | Publish structured timestamps: `scene_arrival`, `patient_contact`, `depart_scene`, `hospital_arrival` (demo: scripted; live: mock or API stub) |
+| 6 | Extend `lib/events.ts` **with team sync** | New payload types for `audio.event`, `telemetry.updated`, `vision.captured` stubs Dev C will fill |
+| 7 | Redis + deploy | Remote demo URL works |
 
 ---
 
-## Files you touch
+## Ambulance demo script (you maintain the JSON)
 
-```
-lib/redis/client.ts          ← create
-lib/bus.ts                   ← add createRedisBus()
-lib/agents/transcription.ts  ← implement
-app/api/ws/route.ts          ← create
-app/api/encounter/route.ts   ← create
-scripts/demo-injector.ts     ← create
+Replace ER doctor/patient with paramedic/patient. Minimum beats:
+
+| Beat | Speaker | Line (example) | Expected ingestion |
+|------|---------|------------------|-------------------|
+| 1 | Paramedic | "Ma'am, I'm Alex with county EMS. What happened?" | Transcript + timeline start |
+| 2 | Patient | "Chest pain for two hours, started gardening" | Segment published |
+| 3 | Paramedic | "Any allergies? Medications?" | — |
+| 4 | Patient | "Penicillin — rash. Lisinopril and warfarin." | Allergies + meds in transcript |
+| 5 | *(optional)* | GPS: scene arrival timestamp | Telemetry on timeline |
+| 6 | Paramedic | *(doesn't ask about aspirin for 3+ min while discussing vitals)* | Dev B flags missed follow-up — your timestamps must be accurate |
+| 7 | Paramedic | "Generate handoff" / UI button | `handoff.requested` fires |
+
+Coordinate beat timing with Dev B (safety timer) and Dev C (demo pitch).
+
+---
+
+## Non-speech audio events
+
+Deepgram transcribes words; add a thin layer (Deepgram metadata, or simple heuristics on demo) for:
+
+- `prolonged_silence` — no speech > N seconds during active encounter
+- `distress` — elevated volume / agitation (flag only; no diagnosis)
+- `equipment_alarm` — repeated tone pattern (demo: inject at fixed timestamp)
+
+Publish so Dev B/C can show on timeline: *"Equipment alarm at 14:06"* alongside spoken entries.
+
+```typescript
+// Example envelope — finalize shape in lib/events.ts with team
+{
+  channel: "audio.event",
+  payload: {
+    encounterId,
+    type: "prolonged_silence" | "distress" | "equipment_alarm",
+    timestamp,
+    detail?: string
+  }
+}
 ```
 
-**Do not touch:** `lib/agents/extraction.ts`, `components/`, `lib/prompts/`
+---
+
+## GPS / telemetry
+
+Not flashy, but handoff credibility depends on objective anchors.
+
+Demo mode: inject fixed ISO timestamps in `demo-scenario.json`.  
+Live mode: accept `POST /api/telemetry` with `{ event: "scene_arrival" | ... }` or stub from UI.
+
+Dev C displays these on timeline; Dev B may use them in handoff agent context.
+
+---
+
+## Env vars
+
+```bash
+REDIS_URL=
+DEEPGRAM_API_KEY=
+```
 
 ---
 
 ## Test in isolation
 
 ```bash
-# Terminal 1 — start Next.js
 npm run dev
-
-# Terminal 2 — trigger demo replay
-curl -X POST http://localhost:3000/api/encounter -H "Content-Type: application/json" -d '{"mode":"demo"}'
-
-# Terminal 3 — watch Redis
-redis-cli PSUBSCRIBE 'er-copilot:*'
+curl -X POST http://localhost:3000/api/encounter \
+  -H "Content-Type: application/json" \
+  -d '{"mode":"demo"}'
 ```
 
-WebSocket test in browser console:
+Browser:
 
 ```javascript
-const ws = new WebSocket(`ws://${location.host}/api/ws`);
-ws.onmessage = (e) => console.log(JSON.parse(e.data));
+const es = new EventSource("/api/events");
+es.onmessage = (e) => console.log(JSON.parse(e.data));
 ```
 
 ---
 
-## Deepgram integration sketch
+## Handoff to Dev B & Dev C
 
-```typescript
-// Browser captures mic → sends audio chunks to your API route
-// API route opens Deepgram live connection, on transcript:
-await bus.publish(EVENT_CHANNELS.TRANSCRIPT_SEGMENT, {
-  encounterId,
-  text: transcript,
-  speaker: mapSpeaker(dgSpeaker), // doctor | patient | unknown
-  timestamp: new Date().toISOString(),
-});
-```
-
-Speaker diarization: map Deepgram speaker index 0/1 to doctor/patient (configurable in UI later).
+> "Bus is live — ambulance demo replays on `/api/encounter`. Connect to `/api/events`. New channels: `audio.event`, `telemetry.updated`. Vision stub ready for Dev C."
 
 ---
 
-## Handoff to Dev B
+## Reference
 
-When demo injector works, message Dev B: *"Bus is live — subscribe to `transcript.segment` on Redis or use `run-local-bus.ts` until integrated."*
-
----
-
-## Handoff to Dev C
-
-When WebSocket works, message Dev C: *"Connect to `/api/ws` — you'll receive `{ channel, payload }` envelopes."*
+- [Claude.md](../Claude.md)
+- [DEV_B.md](./DEV_B.md) · [DEV_C.md](./DEV_C.md)
+- [PARALLEL_BUILD.md](../PARALLEL_BUILD.md)
+- Shared contract: `lib/events.ts` — **sync before changing**

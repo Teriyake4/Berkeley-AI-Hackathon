@@ -1,153 +1,214 @@
-# Dev C — Output & UI
+# Dev C — UI, Research, CV & Handoff
 
-**Branch:** `dev/c-ui`
+**Branch:** `dev/c-product`  
+**Mission:** Make judges say wow — dashboard, Browserbase research, webcam scene capture, and the **hospital handoff** money shot.
 
-You own the dashboard, Documentation/Research/Handoff agents, and all user-facing polish. You can start UI **immediately** from fixtures — no backend required for hours 0–6.
+You do **not** touch the event bus, demo injector, or extraction/safety agent logic.
 
 ---
 
 ## Your deliverables
 
-1. Next.js app shell with all 4 dashboard panels + disclaimer banner
-2. `hooks/useEncounterEvents.ts` — WebSocket client, encounter state reducer
-3. Documentation, Research, Handoff agents
-4. Handoff modal (before/after money shot)
-5. Live | Demo mode toggle in header
+- [ ] Ambulance-themed dashboard — all panels update during demo
+- [ ] **Research agent** (Browserbase): injury protocols, drug interactions, unknown meds
+- [ ] **CV capture** — laptop webcam scans pills, wounds, medical bracelets; results feed extraction + safety
+- [ ] UI note: *"Production: chest- or helmet-mounted camera"*
+- [ ] Insights panel shows safety trio + NREMT reminders + research citations
+- [ ] Live PCR/SOAP panel wired to `note.updated`
+- [ ] **Handoff modal** — paramedic → hospital report (end demo here)
+- [ ] Timeline shows GPS anchors + audio events + vision captures
+- [ ] 3 clean demo rehearsals with talking points
 
 ---
 
-## Build order
-
-| Order | Task | Done when |
-|-------|------|-----------|
-| 1 | Scaffold Next.js if missing (`create-next-app`) | `npm run dev` works |
-| 2 | Dashboard layout — 4 panels from `fixtures/full-encounter-state.json` | Static UI looks like a clinical product |
-| 3 | `hooks/useEncounterEvents.ts` — reducer for all event types | Mock dispatch updates panels |
-| 4 | Wire WebSocket when Dev A ready; until then use mock hook | Live events update UI |
-| 5 | `lib/agents/documentation.ts` — SOAP from facts + timeline | Bottom panel updates live |
-| 6 | `lib/agents/research.ts` — Browserbase on new med | Citations in insights panel |
-| 7 | `lib/agents/handoff.ts` + handoff modal | Button → before/after report |
-| 8 | Polish — animations, severity colors, auto-scroll transcript | Demo-ready visuals |
-
----
-
-## Files you touch
+## Files you own
 
 ```
-app/layout.tsx
 app/page.tsx
+app/layout.tsx
 app/globals.css
-components/
+components/**
   TranscriptPanel.tsx
   TimelinePanel.tsx
   InsightsPanel.tsx
   SoapPanel.tsx
   HandoffModal.tsx
   DisclaimerBanner.tsx
-  ModeToggle.tsx
+  VisionCapture.tsx          ← create
+  TelemetryBar.tsx           ← create (optional)
 hooks/useEncounterEvents.ts
-lib/agents/documentation.ts
 lib/agents/research.ts
 lib/agents/handoff.ts
-lib/prompts/documentation.ts
+lib/prompts/research.ts
 lib/prompts/handoff.ts
 app/api/handoff/route.ts
+app/api/vision/route.ts      ← create (CV upload → Claude vision)
+backend/agents/research.py
+backend/agents/handoff.py
+backend/prompts/handoff.py
+backend/prompts/research.py
+fixtures/full-encounter-state.json   (ambulance scenario)
 ```
 
-**Do not touch:** `lib/agents/extraction.ts`, `lib/agents/timeline.ts`, `lib/agents/safety.ts`, `app/api/ws/route.ts`
+## Files you do NOT touch
+
+```
+lib/bus.ts
+lib/redis/**              (read-only OK)
+lib/demo/**
+lib/sse/**
+lib/agents/extraction.ts
+lib/agents/timeline.ts
+lib/agents/safety.ts
+lib/agents/documentation.ts
+scripts/demo-scenario.json  (coordinate with Dev A)
+components/LiveMic.tsx
+```
 
 ---
 
-## Test in isolation (hour 0–6, no Dev A/B)
+## Build order
 
-### Static UI from fixture
+| # | Task | Done when |
+|---|------|-----------|
+| 1 | Rebrand UI: **Ambulance Copilot**, paramedic/patient speakers | Static fixture looks like field tool |
+| 2 | Wire `useEncounterEvents` to SSE | Demo updates all panels |
+| 3 | Timeline: render **GPS**, **audio events**, **vision** entries | Multimodal timeline visible |
+| 4 | **Research agent** + Browserbase | Warfarin beat → citations in insights |
+| 5 | **VisionCapture** component + API | Snap vial/bracelet → `vision.captured` → safety cross-check fires |
+| 6 | Insights panel: safety severity colors + NREMT reminders + research | All three demo flags visible |
+| 7 | **Handoff modal** — before (raw transcript) / after (structured hospital report) | Pitch ends here |
+| 8 | Polish + demo script | 5-min flow rehearsed 3× |
 
-```typescript
-import fixture from "@/fixtures/full-encounter-state.json";
+---
 
-// page.tsx — render all panels from fixture until WebSocket connected
-```
+## Research agent (Browserbase)
 
-### Mock event dispatcher
+**Triggers:**
 
-```typescript
-// hooks/useEncounterEvents.ts
-export function useMockEncounter() {
-  const [state, dispatch] = useReducer(encounterReducer, initialState);
+- New medication in `facts.extracted` not yet researched  
+- New allergy or high-risk condition  
+- Paramedic explicitly uncertain ("I don't know what this pill is") — extract from transcript  
 
-  useEffect(() => {
-    // Replay fixture events with setTimeout to simulate live updates
-  }, []);
+**Queries (examples):**
 
-  return state;
-}
-```
+- `warfarin aspirin interaction bleeding risk`
+- `chest pain prehospital ACS guideline`
+- `{unknown_pill_imprint} pill identifier`
 
-Toggle: `USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true"`
+Publish `research.completed` with 2–3 citations. Display under **References** in insights.
+
+Paramedics can ask questions themselves in dialogue; research backs them up so the **handoff doc** includes everything the ED doctor needs.
+
+---
+
+## Computer vision (demo)
+
+### UX
+
+- Button: **Scan scene** → laptop webcam preview → capture frame  
+- Use cases in demo: **pill vial**, **medical alert bracelet**, **visible wound** (optional)  
+- Caption in UI: *"Demo uses laptop camera. In the field: chest-mounted body cam."*
+
+### Flow
+
+1. User captures image → `POST /api/vision`  
+2. Claude vision (or heuristic fallback) → `{ identified, type: "medication"|"bracelet"|"wound", rawText? }`  
+3. Publish `vision.captured` + merge into entities  
+4. Dev B safety agent cross-checks med vs known list → insights flag  
+
+**Demo beat:** Patient on warfarin → paramedic scans aspirin vial → **interaction flag before giving aspirin**.
+
+---
+
+## Handoff report (money shot)
+
+Ambulance always hands off to hospital. Report must include:
+
+- Patient summary + chief complaint  
+- **Allergies** (prominent)  
+- Timeline with **GPS-anchored** timestamps  
+- Current medications (stated + vision-identified)  
+- Outstanding questions  
+- Recommended ED actions  
+- Research citations for high-risk findings  
+
+Flow:
+
+1. Click **Generate Handoff Report**  
+2. `POST /api/handoff` → `handoff.requested`  
+3. Handoff agent → `handoff.generated`  
+4. Modal: messy transcript | structured report — **stop demo here**
 
 ---
 
 ## Dashboard layout
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ ⚠ Demo only — not for clinical use.          [Live | Demo] │
-├──────────────┬──────────────────────────┬───────────────────┤
-│  Transcript  │       Timeline           │  AI Insights      │
-│  (left 25%)  │       (center 40%)       │  (right 35%)      │
-├──────────────┴──────────────────────────┴───────────────────┤
-│  SOAP Note (bottom, full width)                              │
-├─────────────────────────────────────────────────────────────┤
-│  [ Generate Handoff Report ]                                │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ ⚠ Demo only — not for clinical use.     [Live | Demo] [📷 Scan] │
+├──────────────┬──────────────────────────┬────────────────────┤
+│  Transcript  │  Timeline (+ GPS/audio)  │  AI Insights       │
+│  paramedic/  │                          │  flags · NREMT ·   │
+│  patient     │                          │  research refs     │
+├──────────────┴──────────────────────────┴────────────────────┤
+│  Live PCR / SOAP note                                         │
+├──────────────────────────────────────────────────────────────┤
+│  Scene · En route · Hospital          [ Generate Handoff ]    │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-### Panel event subscriptions
+---
+
+## Panel → event mapping
 
 | Panel | Events |
 |-------|--------|
 | Transcript | `transcript.segment` |
-| Timeline | `timeline.updated`, `safety.flagged` (as timeline entries) |
-| Insights | `safety.flagged`, `research.completed`, derived missing-info |
+| Timeline | `timeline.updated`, `telemetry.updated`, `audio.event`, `vision.captured`, `safety.flagged` |
+| Insights | `safety.flagged`, `research.completed`, NREMT reminders |
 | SOAP | `note.updated` |
 | Handoff modal | `handoff.generated` |
 
 ---
 
-## Research agent (Browserbase)
+## Demo script (you lead pitch)
 
-Trigger: new medication name in `facts.extracted` not in Redis set `encounter:{id}:researched-meds`
-
-Query template: `"{medication} drug interactions chest pain anticoagulation"`
-
-Publish `research.completed` with 2–3 citations. Display in insights panel under "References".
-
----
-
-## Handoff flow
-
-1. User clicks "Generate Handoff Report"
-2. UI POSTs `/api/handoff` → publishes `handoff.requested`
-3. Handoff agent reads full Redis encounter state → Claude → `handoff.generated`
-4. Modal shows split view: raw transcript (before) | structured report (after)
-
-**End demo on this modal.**
+| Min | Action | Call out |
+|-----|--------|----------|
+| 0–1 | Problem: information lost between scene and ED | — |
+| 1–2 | Start demo — paramedic assesses chest pain | Transcript + timeline |
+| 2–3 | Allergies + warfarin extracted | Allergy line in note |
+| 3–4 | Missed follow-up flag appears | "Agent remembered chest pain from 3 min ago" |
+| 4 | Scan aspirin vial | CV + interaction flag |
+| 5 | Research citations | Browserbase |
+| 5 | **Handoff modal** | End — no architecture slide |
 
 ---
 
-## Visual polish checklist
+## Env vars
 
-- [ ] Dark sidebar / light content area
-- [ ] Safety flags: red (high), amber (medium), blue (low)
-- [ ] Timeline entries fade in
-- [ ] Transcript auto-scrolls
-- [ ] SOAP sections labeled S / O / A / P
-- [ ] Loading skeletons while waiting for events
+```bash
+ANTHROPIC_API_KEY=
+BROWSERBASE_API_KEY=
+BROWSERBASE_PROJECT_ID=
+ARIZE_SPACE_ID=          # optional
+ARIZE_API_KEY=
+```
 
 ---
 
-## Handoff to team
+## Test in isolation (hour 0–6)
 
-When static UI + mock replay works: share screenshot in Slack — Dev A/B see target state.
+Render from `fixtures/full-encounter-state.json` before SSE is ready.
 
-When handoff modal works: schedule integration rehearsal.
+Mock `vision.captured` dispatch in reducer to build Insights panel early.
+
+---
+
+## Reference
+
+- [Claude.md](../Claude.md)
+- [DEV_A.md](./DEV_A.md) · [DEV_B.md](./DEV_B.md)
+- [PARALLEL_BUILD.md](../PARALLEL_BUILD.md)
+- Shared contract: `lib/events.ts` — **sync before changing**
