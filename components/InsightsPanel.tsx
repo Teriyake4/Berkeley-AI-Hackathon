@@ -1,5 +1,7 @@
-import type { SafetyFlaggedPayload } from "@/types/events";
-import type { Citation } from "@/types/events";
+"use client";
+
+import { useState } from "react";
+import type { Citation, SafetyFlaggedPayload } from "@/types/events";
 
 const severityConfig = {
   critical: {
@@ -49,6 +51,17 @@ export function InsightsPanel({
   research: ResearchItem[];
   suggestedFollowUps: string[];
 }) {
+  const [expandedFlags, setExpandedFlags] = useState<Set<string>>(new Set());
+
+  const toggleFlag = (key: string) => {
+    setExpandedFlags((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   const NREMT_PREFIX = "NREMT gap:";
   const realFlags = safetyFlags.filter((f) => !f.concern.startsWith(NREMT_PREFIX));
   const nremtFlags = safetyFlags.filter((f) => f.concern.startsWith(NREMT_PREFIX));
@@ -62,6 +75,7 @@ export function InsightsPanel({
     <div className="flex h-full flex-col">
       <h2 className="panel-label mb-3">AI Insights</h2>
       <div className="flex-1 space-y-5 overflow-y-auto pr-0.5">
+
         {/* Safety Flags */}
         <section>
           <h3 className="panel-label mb-2 flex items-center gap-1.5 normal-case tracking-[0.14em]">
@@ -73,48 +87,79 @@ export function InsightsPanel({
             )}
           </h3>
           {sortedFlags.length === 0 ? (
-            <p className="font-mono text-sm text-[var(--text-faint)]">
-              No concerns flagged yet
-            </p>
+            <p className="font-mono text-sm text-[var(--text-faint)]">No concerns flagged yet</p>
           ) : (
             sortedFlags.map((flag, i) => {
               const cfg = severityConfig[flag.severity];
+              const key = flag.flaggedAt ?? String(i);
+              const expanded = expandedFlags.has(key);
+              const hasDetail =
+                !!flag.rationale ||
+                !!flag.clarifyingQuestion ||
+                (flag.recommendedActions != null && flag.recommendedActions.length > 0);
+
               return (
                 <div
                   key={i}
-                  className={`animate-fade-in relative mb-2 overflow-hidden rounded-xl border p-3 pl-4 ${cfg.card}`}
+                  className={`animate-fade-in relative mb-2 overflow-hidden rounded-xl border pl-4 ${cfg.card}`}
                 >
                   <span className={`absolute inset-y-0 left-0 w-1 ${cfg.bar}`} />
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${cfg.label}`}
-                    >
-                      {flag.severity}
-                    </span>
-                  </div>
-                  <p className={`mt-1.5 text-sm font-semibold leading-snug ${cfg.text}`}>
-                    {flag.concern}
-                  </p>
-                  <p className={`mt-1 text-xs leading-relaxed ${cfg.subtext}`}>
-                    {flag.rationale}
-                  </p>
-                  {flag.clarifyingQuestion && (
-                    <p className="mt-2 rounded-lg border border-[var(--line-strong)] bg-ink-900/60 px-2 py-1 text-xs font-medium text-[var(--text-muted)]">
-                      “{flag.clarifyingQuestion}”
-                    </p>
-                  )}
-                  {flag.recommendedActions && flag.recommendedActions.length > 0 && (
-                    <ul className="mt-2 space-y-1">
-                      {flag.recommendedActions.map((action, j) => (
-                        <li
-                          key={j}
-                          className="flex items-start gap-1.5 text-xs text-[var(--text-muted)]"
+
+                  {/* Always-visible header — click to expand */}
+                  <button
+                    type="button"
+                    onClick={() => hasDetail && toggleFlag(key)}
+                    className={`w-full p-3 text-left ${hasDetail ? "cursor-pointer" : "cursor-default"}`}
+                    aria-expanded={hasDetail ? expanded : undefined}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${cfg.label}`}
+                      >
+                        {flag.severity}
+                      </span>
+                      {hasDetail && (
+                        <span
+                          className={`shrink-0 text-xs text-[var(--text-faint)] transition-transform duration-200 ${
+                            expanded ? "rotate-180" : ""
+                          }`}
                         >
-                          <span className="mt-0.5 shrink-0 text-vitals-400">→</span>
-                          <span>{action}</span>
-                        </li>
-                      ))}
-                    </ul>
+                          ▾
+                        </span>
+                      )}
+                    </div>
+                    <p className={`mt-1.5 text-sm font-semibold leading-snug ${cfg.text}`}>
+                      {flag.concern}
+                    </p>
+                  </button>
+
+                  {/* Collapsible detail */}
+                  {expanded && hasDetail && (
+                    <div className="px-3 pb-3">
+                      {flag.rationale && (
+                        <p className={`text-xs leading-relaxed ${cfg.subtext}`}>
+                          {flag.rationale}
+                        </p>
+                      )}
+                      {flag.clarifyingQuestion && (
+                        <p className="mt-2 rounded-lg border border-[var(--line-strong)] bg-ink-900/60 px-2 py-1 text-xs font-medium text-[var(--text-muted)]">
+                          &ldquo;{flag.clarifyingQuestion}&rdquo;
+                        </p>
+                      )}
+                      {flag.recommendedActions && flag.recommendedActions.length > 0 && (
+                        <ul className="mt-2 space-y-1">
+                          {flag.recommendedActions.map((action, j) => (
+                            <li
+                              key={j}
+                              className="flex items-start gap-1.5 text-xs text-[var(--text-muted)]"
+                            >
+                              <span className="mt-0.5 shrink-0 text-vitals-400">&#8594;</span>
+                              <span>{action}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   )}
                 </div>
               );
@@ -137,7 +182,7 @@ export function InsightsPanel({
                   key={i}
                   className="animate-fade-in flex items-start gap-2 text-sm text-[var(--text-muted)]"
                 >
-                  <span className="mt-0.5 shrink-0 text-amber-400">☐</span>
+                  <span className="mt-0.5 shrink-0 text-amber-400">&#9744;</span>
                   <div className="min-w-0 flex-1">
                     <p className="leading-snug text-[var(--text)]">
                       {flag.concern.replace(NREMT_PREFIX, "").trim()}
@@ -157,9 +202,7 @@ export function InsightsPanel({
         {/* Missing Information */}
         {missingInfo.length > 0 && (
           <section>
-            <h3 className="panel-label mb-2 normal-case tracking-[0.14em]">
-              Missing Information
-            </h3>
+            <h3 className="panel-label mb-2 normal-case tracking-[0.14em]">Missing Information</h3>
             <ul className="space-y-1.5">
               {missingInfo.map((item) => (
                 <li
@@ -177,9 +220,7 @@ export function InsightsPanel({
         {/* Suggested Follow-Up Questions */}
         {suggestedFollowUps.length > 0 && (
           <section>
-            <h3 className="panel-label mb-2 normal-case tracking-[0.14em]">
-              Suggested Questions
-            </h3>
+            <h3 className="panel-label mb-2 normal-case tracking-[0.14em]">Suggested Questions</h3>
             <ul className="space-y-1.5">
               {suggestedFollowUps.map((q) => (
                 <li
@@ -205,9 +246,7 @@ export function InsightsPanel({
             )}
           </h3>
           {research.length === 0 ? (
-            <p className="font-mono text-sm text-[var(--text-faint)]">
-              Research agent idle
-            </p>
+            <p className="font-mono text-sm text-[var(--text-faint)]">Research agent idle</p>
           ) : (
             research.map((r, i) => (
               <div
@@ -232,7 +271,7 @@ export function InsightsPanel({
                         rel="noopener noreferrer"
                         className="group flex items-start gap-1.5"
                       >
-                        <span className="mt-0.5 shrink-0 text-xs text-clinical-400">↗</span>
+                        <span className="mt-0.5 shrink-0 text-xs text-clinical-400">&#8599;</span>
                         <span className="text-xs font-medium leading-snug text-clinical-200 group-hover:underline">
                           {c.title}
                         </span>

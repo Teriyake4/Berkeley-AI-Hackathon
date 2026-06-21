@@ -36,17 +36,17 @@ export function HandoffModal({
   const rawTranscript = transcript.map((l) => `[${l.speaker}] ${l.text}`).join("\n");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/80 p-4 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[92vh] overflow-hidden flex flex-col ring-1 ring-clinical-500/30">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/85 p-4 backdrop-blur-sm animate-fade-in">
+      <div className="bg-ink-850 rounded-2xl shadow-panel max-w-5xl w-full max-h-[92vh] overflow-hidden flex flex-col ring-1 ring-white/10">
 
         {/* Header */}
-        <div className="px-6 py-4 border-b border-clinical-800 flex items-center justify-between bg-ink-850 text-white rounded-t-2xl">
+        <div className="px-6 py-4 border-b border-[var(--line)] flex items-center justify-between">
           <div>
-            <h2 className="font-display text-lg font-extrabold tracking-tight">
+            <h2 className="font-display text-lg font-extrabold tracking-tight text-[var(--text)]">
               Ambulance → Hospital Handoff
             </h2>
             {report?.generatedAt && (
-              <p className="mt-0.5 font-mono text-[11px] text-clinical-300">
+              <p className="mt-0.5 font-mono text-[11px] text-[var(--text-faint)] uppercase tracking-[0.1em]">
                 Generated {new Date(report.generatedAt).toLocaleString()}
               </p>
             )}
@@ -56,13 +56,13 @@ export function HandoffModal({
               <>
                 <button
                   onClick={handleCopy}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-clinical-700 hover:bg-clinical-600 transition-colors font-medium"
+                  className="text-xs px-3 py-1.5 rounded-lg border border-[var(--line-strong)] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-white/5 transition-colors font-medium"
                 >
                   Copy
                 </button>
                 <button
                   onClick={handlePrint}
-                  className="text-xs px-3 py-1.5 rounded-lg bg-clinical-700 hover:bg-clinical-600 transition-colors font-medium"
+                  className="text-xs px-3 py-1.5 rounded-lg border border-[var(--line-strong)] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-white/5 transition-colors font-medium"
                 >
                   Print
                 </button>
@@ -70,7 +70,7 @@ export function HandoffModal({
             )}
             <button
               onClick={onClose}
-              className="ml-2 text-white/70 hover:text-white text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+              className="ml-1 text-[var(--text-faint)] hover:text-[var(--text)] text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/8 transition-colors"
               aria-label="Close"
             >
               ×
@@ -80,10 +80,10 @@ export function HandoffModal({
 
         {/* Loading state */}
         {loading && (
-          <div className="flex-1 flex flex-col items-center justify-center p-12 text-slate-500">
-            <div className="w-8 h-8 border-4 border-clinical-200 border-t-clinical-600 rounded-full animate-spin mb-4" />
-            <p className="text-sm font-medium">Generating handoff report…</p>
-            <p className="text-xs text-slate-400 mt-1">Claude is synthesizing the encounter</p>
+          <div className="flex-1 flex flex-col items-center justify-center p-12 text-[var(--text-faint)]">
+            <div className="w-8 h-8 border-2 border-ink-600 border-t-clinical-400 rounded-full animate-spin mb-4" />
+            <p className="text-sm font-medium text-[var(--text-muted)]">Generating handoff report…</p>
+            <p className="text-xs text-[var(--text-faint)] mt-1">Claude is synthesizing the encounter</p>
           </div>
         )}
 
@@ -92,65 +92,61 @@ export function HandoffModal({
           <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
 
             {/* Left — raw transcript */}
-            <div className="md:w-[38%] p-6 border-r overflow-y-auto bg-slate-50">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-2">
-                <span className="bg-slate-400 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">BEFORE</span>
+            <div className="md:w-[38%] p-6 border-r border-[var(--line)] overflow-y-auto bg-ink-900">
+              <h3 className="panel-label mb-3 flex items-center gap-2">
+                <span className="bg-ink-700 text-[var(--text-faint)] text-[10px] px-1.5 py-0.5 rounded font-bold tracking-wider">BEFORE</span>
                 Raw Transcript
               </h3>
-              <pre className="text-xs text-slate-600 whitespace-pre-wrap font-mono leading-relaxed">
+              <pre className="text-xs text-[var(--text-faint)] whitespace-pre-wrap font-mono leading-relaxed">
                 {rawTranscript || "No transcript captured."}
               </pre>
             </div>
 
             {/* Right — structured report */}
-            <div className="md:flex-1 p-6 overflow-y-auto">
-              <h3 className="text-xs font-bold text-clinical-700 uppercase tracking-wide mb-4 flex items-center gap-2">
-                <span className="bg-clinical-600 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">AFTER</span>
-                Structured Handoff for Receiving ED
+            <div className="md:flex-1 p-6 overflow-y-auto bg-ink-850">
+              <h3 className="panel-label mb-4 flex items-center gap-2">
+                <span className="bg-clinical-500/20 text-clinical-300 text-[10px] px-1.5 py-0.5 rounded font-bold tracking-wider border border-clinical-500/30">AFTER</span>
+                Structured Handoff · Receiving ED
               </h3>
 
               {/* Patient summary */}
               <section className="mb-5">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
-                  Patient Summary
-                </h4>
-                <p className="text-sm text-slate-700 leading-relaxed bg-clinical-50 border border-clinical-100 rounded-lg p-3">
+                <h4 className="panel-label mb-1.5">Patient Summary</h4>
+                <p className="text-sm text-[var(--text-muted)] leading-relaxed bg-ink-800 border border-[var(--line)] rounded-lg p-3">
                   {report.patientSummary}
                 </p>
               </section>
 
               {/* Allergies — prominent */}
               <section className="mb-5">
-                <h4 className="text-xs font-bold text-red-600 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-600" /> Allergies
+                <h4 className="panel-label mb-1.5 flex items-center gap-1.5 text-signal-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-signal-500" /> Allergies
                 </h4>
                 {(report.allergies ?? []).length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {(report.allergies ?? []).map((a, i) => (
                       <span
                         key={i}
-                        className="text-xs bg-red-100 text-red-800 border border-red-300 rounded-full px-3 py-1 font-bold capitalize"
+                        className="text-xs bg-signal-500/15 text-signal-200 border border-signal-500/35 rounded-full px-3 py-1 font-bold capitalize"
                       >
                         {a}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-500 italic">NKDA (no known drug allergies)</p>
+                  <p className="text-sm text-[var(--text-faint)] italic">NKDA — no known drug allergies</p>
                 )}
               </section>
 
               {/* Timeline */}
               {report.timeline.length > 0 && (
                 <section className="mb-5">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                    Key Events
-                  </h4>
-                  <ol className="relative border-l-2 border-clinical-100 ml-2 space-y-3">
+                  <h4 className="panel-label mb-2">Key Events</h4>
+                  <ol className="relative border-l border-clinical-500/25 ml-2 space-y-3">
                     {report.timeline.map((entry) => (
                       <li key={entry.id} className="ml-4">
-                        <span className="absolute -left-1.5 mt-1 h-3 w-3 rounded-full bg-clinical-500 ring-4 ring-white" />
-                        <time className="text-xs text-slate-400 font-mono">
+                        <span className="absolute -left-1.5 mt-1 h-3 w-3 rounded-full bg-clinical-400 ring-4 ring-ink-850" />
+                        <time className="text-xs text-[var(--text-faint)] font-mono">
                           {new Date(entry.timestamp).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
@@ -159,8 +155,8 @@ export function HandoffModal({
                         <p
                           className={`text-sm leading-snug ${
                             entry.source === "safety"
-                              ? "text-red-700 font-medium"
-                              : "text-slate-700"
+                              ? "text-signal-300 font-medium"
+                              : "text-[var(--text-muted)]"
                           }`}
                         >
                           {entry.summary.replace(/^⚠\s*/, "")}
@@ -174,22 +170,20 @@ export function HandoffModal({
               {/* Current medications */}
               {report.currentMedications.length > 0 && (
                 <section className="mb-5">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                    Current Medications
-                  </h4>
+                  <h4 className="panel-label mb-2">Current Medications</h4>
                   <div className="flex flex-wrap gap-2">
                     {report.currentMedications.map((m, i) => (
                       <span
                         key={i}
                         className={`text-xs rounded-full px-3 py-1 font-medium capitalize border ${
                           m.source === "vision"
-                            ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-                            : "bg-blue-50 text-blue-800 border-blue-200"
+                            ? "bg-vitals-400/10 text-vitals-400 border-vitals-400/25"
+                            : "bg-clinical-500/10 text-clinical-300 border-clinical-500/25"
                         }`}
                       >
                         {m.name}
                         {m.dose ? ` — ${m.dose}` : ""}
-                        <span className="ml-1.5 text-[10px] font-normal opacity-70">
+                        <span className="ml-1.5 text-[10px] font-normal opacity-60">
                           {m.source === "vision" ? "camera" : "stated"}
                         </span>
                       </span>
@@ -201,13 +195,11 @@ export function HandoffModal({
               {/* Outstanding questions */}
               {report.outstandingQuestions.length > 0 && (
                 <section className="mb-5">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                    Outstanding Questions
-                  </h4>
+                  <h4 className="panel-label mb-2">Outstanding Questions</h4>
                   <ul className="space-y-1.5">
                     {report.outstandingQuestions.map((q, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
-                        <span className="text-amber-500 mt-0.5 shrink-0 font-bold">?</span>
+                      <li key={i} className="flex items-start gap-2 text-sm text-[var(--text-muted)]">
+                        <span className="text-amber-400 mt-0.5 shrink-0 font-bold">?</span>
                         {q}
                       </li>
                     ))}
@@ -218,13 +210,11 @@ export function HandoffModal({
               {/* Recommended actions */}
               {report.recommendedActions.length > 0 && (
                 <section>
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
-                    Recommended Actions
-                  </h4>
+                  <h4 className="panel-label mb-2">Recommended Actions</h4>
                   <ol className="space-y-1.5 list-none">
                     {report.recommendedActions.map((a, i) => (
-                      <li key={i} className="flex items-start gap-2.5 text-sm text-slate-700">
-                        <span className="bg-clinical-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center shrink-0 font-bold mt-0.5">
+                      <li key={i} className="flex items-start gap-2.5 text-sm text-[var(--text-muted)]">
+                        <span className="bg-clinical-500/20 text-clinical-300 border border-clinical-500/30 text-xs rounded-full h-5 w-5 flex items-center justify-center shrink-0 font-bold mt-0.5">
                           {i + 1}
                         </span>
                         {a}
@@ -239,7 +229,7 @@ export function HandoffModal({
 
         {/* Footer disclaimer */}
         {report && (
-          <div className="px-6 py-2.5 border-t border-amber-200 bg-amber-50 text-amber-800 text-xs text-center font-medium">
+          <div className="px-6 py-2.5 border-t border-[var(--line)] bg-ink-900 text-[var(--text-faint)] text-xs text-center font-mono tracking-wide">
             Demo purposes only — not for clinical use. Always verify with a licensed clinician.
           </div>
         )}
