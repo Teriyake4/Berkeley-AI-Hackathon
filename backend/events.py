@@ -101,6 +101,7 @@ class SafetyFlaggedPayload:
     rationale: str
     flaggedAt: str
     clarifyingQuestion: Optional[str] = None
+    recommendedActions: Optional[List[str]] = None
 
 
 @dataclass

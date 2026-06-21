@@ -102,6 +102,16 @@ export function InsightsPanel({
                           💬 {flag.clarifyingQuestion}
                         </p>
                       )}
+                      {flag.recommendedActions && flag.recommendedActions.length > 0 && (
+                        <ul className="mt-2 space-y-1">
+                          {flag.recommendedActions.map((action, j) => (
+                            <li key={j} className="flex items-start gap-1.5 text-xs text-slate-700">
+                              <span className="mt-0.5 shrink-0 text-emerald-600">→</span>
+                              <span>{action}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   </div>
                 </div>

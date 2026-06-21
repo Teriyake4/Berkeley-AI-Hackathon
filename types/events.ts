@@ -83,6 +83,7 @@ export interface SafetyFlaggedPayload {
   rationale: string;
   flaggedAt: string;
   clarifyingQuestion?: string;
+  recommendedActions?: string[];
 }
 
 export interface NoteUpdatedPayload {
