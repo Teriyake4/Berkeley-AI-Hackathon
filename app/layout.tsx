@@ -24,7 +24,7 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Nos — AI Paramedic Copilot",
+  title: "Nos - AI Paramedic Copilot",
   description:
     "A real-time AI teammate for paramedics. Listens to the scene, watches the patient, flags safety risks, and hands the ED a perfect report.",
 };

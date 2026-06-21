@@ -1,20 +1,15 @@
 services:
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
     env_file:
       - path: .env
         required: false
     environment:
-      # No local Redis — use Redis Cloud or external Redis via .env
       - REDIS_URL=${REDIS_URL:-}
-    volumes:
-      - ./backend:/app
-      - ./scripts:/scripts:ro
-      - /app/__pycache__
 
   frontend:
     build:
@@ -27,9 +22,6 @@ services:
         required: false
     environment:
       - PYTHON_BACKEND_URL=http://backend:8000
-      # Don't use Redis Cloud URL from .env — frontend proxies to Python backend
       - REDIS_URL=
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/.next
+    depends_on:
+      - backend

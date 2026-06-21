@@ -104,7 +104,8 @@ docker-compose.yml        # Orchestrate frontend, backend & Redis
 
 | Command | Description |
 |---------|-------------|
-| `docker compose up --build` | Start all services (frontend, backend, Redis) |
+| `docker compose up --build` | Start all services (frontend dev, backend, Redis) |
+| `docker compose -f docker-compose.prod.yml up --build` | Production images + external Redis from `.env` |
 | `docker compose down` | Stop all services |
 | `npm run dev` | Start Next.js frontend (port 3000) |
 | `npm run typecheck` | TypeScript check |
@@ -123,6 +124,7 @@ All optional for demo. Without keys, heuristic fallbacks produce a working demo.
 
 ## Docs
 
+- [Deployment guide](./docs/DEPLOY.md) — Railway, Docker production, env vars
 - [Backend README](./backend/README.md)
 - [Teammate 1 — Platform & Pipeline](./docs/TEAMMATE_1.md)
 - [Teammate 2 — Agents, UI & Demo](./docs/TEAMMATE_2.md)
