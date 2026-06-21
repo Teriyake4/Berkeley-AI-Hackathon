@@ -5,7 +5,7 @@
 
 // ─── Primitives ─────────────────────────────────────────────────────────────
 
-export type Speaker = "doctor" | "patient" | "unknown";
+export type Speaker = "paramedic" | "doctor" | "patient" | "bystander" | "unknown";
 
 export type Severity = "low" | "medium" | "high";
 
@@ -108,6 +108,28 @@ export interface HandoffGeneratedPayload {
   report: HandoffReport;
 }
 
+export interface AudioEventPayload {
+  encounterId: string;
+  type: string; // e.g. "silence", "alarm", "distress", "monitor_tone"
+  timestamp: string;
+  detail?: string;
+}
+
+export interface TelemetryUpdatedPayload {
+  encounterId: string;
+  event: string; // e.g. "scene_arrival", "patient_contact", "en_route", "hospital_arrival"
+  timestamp: string;
+  label?: string;
+}
+
+export interface VisionCapturedPayload {
+  encounterId: string;
+  identified: string; // e.g. "aspirin 325mg"
+  captureType: string; // e.g. "vial_label", "bracelet", "wound"
+  timestamp: string;
+  rawText?: string;
+}
+
 // ─── Event map (channel name → payload type) ────────────────────────────────
 
 export const EVENT_CHANNELS = {
@@ -119,6 +141,9 @@ export const EVENT_CHANNELS = {
   RESEARCH_COMPLETED: "research.completed",
   HANDOFF_REQUESTED: "handoff.requested",
   HANDOFF_GENERATED: "handoff.generated",
+  AUDIO_EVENT: "audio.event",
+  TELEMETRY_UPDATED: "telemetry.updated",
+  VISION_CAPTURED: "vision.captured",
 } as const;
 
 export type EventChannel = (typeof EVENT_CHANNELS)[keyof typeof EVENT_CHANNELS];
@@ -132,6 +157,9 @@ export interface EventPayloadMap {
   [EVENT_CHANNELS.RESEARCH_COMPLETED]: ResearchCompletedPayload;
   [EVENT_CHANNELS.HANDOFF_REQUESTED]: HandoffRequestedPayload;
   [EVENT_CHANNELS.HANDOFF_GENERATED]: HandoffGeneratedPayload;
+  [EVENT_CHANNELS.AUDIO_EVENT]: AudioEventPayload;
+  [EVENT_CHANNELS.TELEMETRY_UPDATED]: TelemetryUpdatedPayload;
+  [EVENT_CHANNELS.VISION_CAPTURED]: VisionCapturedPayload;
 }
 
 export type EventEnvelope<C extends EventChannel = EventChannel> = {

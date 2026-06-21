@@ -11,15 +11,17 @@ from typing import List
 from events import MedicalEntities, TimelineEntry
 
 
-TIMELINE_SYSTEM = """You are a clinical timeline agent. Produce a concise, chronological list of key clinical events from the encounter.
+TIMELINE_SYSTEM = """You are a clinical timeline agent for pre-hospital EMS/ambulance encounters.
+Produce a concise, chronological list of key clinical events from the scene.
 
 Return ONLY a raw JSON array (no markdown):
 [{ "id": string, "timestamp": string (ISO 8601), "summary": string, "source": "extraction" }]
 
 Rules:
 - Each entry is one sentence, clinical and factual
-- Max 10 entries total (merge or drop minor duplicates)
-- Use realistic timestamps spread across the encounter (start ~08:12 today)
+- Use ambulance context: scene arrival, patient contact, transport, en route — not ER admissions
+- Max 12 entries total (merge or drop minor duplicates)
+- Use realistic timestamps spread across the encounter (start from scene arrival)
 - source must be "extraction\""""
 
 

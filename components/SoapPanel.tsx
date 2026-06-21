@@ -1,4 +1,4 @@
-import type { SoapNote } from "@/lib/events";
+import type { SoapNote } from "@/types/events";
 
 const sections: Array<{ key: keyof SoapNote; label: string }> = [
   { key: "subjective", label: "S — Subjective" },

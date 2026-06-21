@@ -39,6 +39,18 @@ class _EncounterKeys:
     def handoff(self, id: str) -> str:
         return encounter_key(id, "handoff")
 
+    def encounter_start(self, id: str) -> str:
+        return encounter_key(id, "start-time")
+
+    def symptom_timestamps(self, id: str) -> str:
+        return encounter_key(id, "symptom-timestamps")
+
+    def nremt_covered(self, id: str) -> str:
+        return encounter_key(id, "nremt-covered")
+
+    def vision_items(self, id: str) -> str:
+        return encounter_key(id, "vision-items")
+
     def all_keys(self, id: str):
         return [
             self.transcript(id),
@@ -50,6 +62,10 @@ class _EncounterKeys:
             self.research(id),
             self.researched_meds(id),
             self.handoff(id),
+            self.encounter_start(id),
+            self.symptom_timestamps(id),
+            self.nremt_covered(id),
+            self.vision_items(id),
         ]
 
 

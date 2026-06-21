@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Speaker } from "@/lib/events";
+import type { Speaker } from "@/types/events";
 
 type Mode = "idle" | "deepgram" | "webspeech";
 

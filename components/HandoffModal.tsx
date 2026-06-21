@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import type { HandoffReport } from "@/lib/events";
+import type { HandoffReport } from "@/types/events";
 import type { TranscriptLine } from "@/hooks/useEncounterEvents";
 
 export function HandoffModal({

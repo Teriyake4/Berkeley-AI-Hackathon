@@ -52,7 +52,7 @@ async def _call_claude_json(system: str, user: str, agent_name: str) -> Optional
     for attempt in range(2):
         try:
             response = await client.messages.create(
-                model="claude-sonnet-4-5",
+                model="claude-sonnet-4-6",
                 max_tokens=2048,
                 system=full_system,
                 messages=[{"role": "user", "content": user}],

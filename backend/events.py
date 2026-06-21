@@ -10,7 +10,7 @@ from enum import Enum
 
 # ─── Primitives ────────────────────────────────────────────────────────────────
 
-Speaker = Literal["doctor", "patient", "unknown"]
+Speaker = Literal["paramedic", "doctor", "patient", "bystander", "unknown"]
 Severity = Literal["low", "medium", "high"]
 
 
@@ -130,6 +130,31 @@ class HandoffGeneratedPayload:
     report: HandoffReport
 
 
+@dataclass
+class AudioEventPayload:
+    encounterId: str
+    type: str  # e.g. "silence", "alarm", "distress", "monitor_tone"
+    timestamp: str
+    detail: Optional[str] = None
+
+
+@dataclass
+class TelemetryUpdatedPayload:
+    encounterId: str
+    event: str  # e.g. "scene_arrival", "patient_contact", "en_route", "hospital_arrival"
+    timestamp: str
+    label: Optional[str] = None
+
+
+@dataclass
+class VisionCapturedPayload:
+    encounterId: str
+    identified: str  # e.g. "aspirin 325mg"
+    captureType: str  # e.g. "vial_label", "bracelet", "wound"
+    timestamp: str
+    rawText: Optional[str] = None
+
+
 # ─── Event channels ─────────────────────────────────────────────────────────────
 
 class EventChannels:
@@ -141,6 +166,9 @@ class EventChannels:
     RESEARCH_COMPLETED = "research.completed"
     HANDOFF_REQUESTED = "handoff.requested"
     HANDOFF_GENERATED = "handoff.generated"
+    AUDIO_EVENT = "audio.event"
+    TELEMETRY_UPDATED = "telemetry.updated"
+    VISION_CAPTURED = "vision.captured"
 
 
 EVENT_CHANNELS = EventChannels()

@@ -11,9 +11,9 @@ import type {
   Speaker,
   TimelineEntry,
   TranscriptSegmentPayload,
-} from "@/lib/events";
-import { EVENT_CHANNELS } from "@/lib/events";
-import { ENCOUNTER_ID } from "@/lib/redis/keys";
+} from "@/types/events";
+import { EVENT_CHANNELS } from "@/types/events";
+import { ENCOUNTER_ID } from "@/types/constants";
 
 export interface TranscriptLine {
   speaker: Speaker;
@@ -140,15 +140,15 @@ function applyEvent(state: EncounterState, envelope: EventEnvelope): EncounterSt
       };
     }
     case EVENT_CHANNELS.FACTS_EXTRACTED: {
-      const p = envelope.payload as import("@/lib/events").FactsExtractedPayload;
+      const p = envelope.payload as import("@/types/events").FactsExtractedPayload;
       return { ...state, activeAgents, entities: p.entities };
     }
     case EVENT_CHANNELS.TIMELINE_UPDATED: {
-      const p = envelope.payload as import("@/lib/events").TimelineUpdatedPayload;
+      const p = envelope.payload as import("@/types/events").TimelineUpdatedPayload;
       return { ...state, activeAgents, timeline: p.events };
     }
     case EVENT_CHANNELS.SAFETY_FLAGGED: {
-      const p = envelope.payload as import("@/lib/events").SafetyFlaggedPayload;
+      const p = envelope.payload as import("@/types/events").SafetyFlaggedPayload;
       const alreadyExists = state.safetyFlags.some((f) => f.concern === p.concern);
       if (alreadyExists) return state;
       return {
@@ -167,11 +167,11 @@ function applyEvent(state: EncounterState, envelope: EventEnvelope): EncounterSt
       };
     }
     case EVENT_CHANNELS.NOTE_UPDATED: {
-      const p = envelope.payload as import("@/lib/events").NoteUpdatedPayload;
+      const p = envelope.payload as import("@/types/events").NoteUpdatedPayload;
       return { ...state, activeAgents, soap: p.soap };
     }
     case EVENT_CHANNELS.RESEARCH_COMPLETED: {
-      const p = envelope.payload as import("@/lib/events").ResearchCompletedPayload;
+      const p = envelope.payload as import("@/types/events").ResearchCompletedPayload;
       // Deduplicate by query
       const alreadyExists = state.research.some((r) => r.query === p.query);
       if (alreadyExists) return state;
@@ -190,7 +190,7 @@ function applyEvent(state: EncounterState, envelope: EventEnvelope): EncounterSt
       };
     }
     case EVENT_CHANNELS.HANDOFF_GENERATED: {
-      const p = envelope.payload as import("@/lib/events").HandoffGeneratedPayload;
+      const p = envelope.payload as import("@/types/events").HandoffGeneratedPayload;
       return { ...state, activeAgents, handoff: p.report, loading: false };
     }
     default:

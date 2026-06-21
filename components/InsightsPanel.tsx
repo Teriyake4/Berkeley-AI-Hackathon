@@ -1,5 +1,5 @@
-import type { SafetyFlaggedPayload } from "@/lib/events";
-import type { Citation } from "@/lib/events";
+import type { SafetyFlaggedPayload } from "@/types/events";
+import type { Citation } from "@/types/events";
 
 const severityConfig = {
   high: {

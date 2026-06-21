@@ -1,4 +1,4 @@
-import type { TimelineEntry } from "@/lib/events";
+import type { TimelineEntry } from "@/types/events";
 
 const sourceStyles: Record<string, string> = {
   safety: "bg-red-500 ring-red-200",

@@ -9,7 +9,7 @@ import { InsightsPanel } from "@/components/InsightsPanel";
 import { SoapPanel } from "@/components/SoapPanel";
 import { HandoffModal } from "@/components/HandoffModal";
 import { LiveMic } from "@/components/LiveMic";
-import type { MedicalEntities } from "@/lib/events";
+import type { MedicalEntities } from "@/types/events";
 
 const AGENT_LABELS: Record<string, string> = {
   extraction: "Extraction",

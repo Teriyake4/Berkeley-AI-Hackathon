@@ -9,7 +9,8 @@ from typing import Optional
 
 from events import MedicalEntities, Medication, Demographics
 
-EXTRACTION_SYSTEM = """You are a clinical entity extraction agent. Extract structured medical facts from doctor-patient conversation transcripts.
+EXTRACTION_SYSTEM = """You are a clinical entity extraction agent for pre-hospital EMS/ambulance encounters.
+Extract structured medical facts from paramedic-patient scene dialogue.
 
 Return ONLY a raw JSON object matching this exact shape (no markdown, no explanation):
 {
@@ -22,23 +23,26 @@ Return ONLY a raw JSON object matching this exact shape (no markdown, no explana
 }
 
 Rules:
-- Include every medication, including ones taken long-term (e.g. lisinopril, warfarin)
-- Include allergies (e.g. "penicillin allergy")
-- Symptoms: include chief complaint and associated symptoms
-- Do NOT invent facts not stated in the transcript
-- Merge carefully with existing entities — never drop previously extracted data"""
+- ALLERGIES ARE MANDATORY: Extract all stated drug/substance allergies immediately when mentioned
+- Include every medication (including maintenance meds: lisinopril, warfarin, metoprolol, etc.)
+- Symptoms: include chief complaint, onset, duration, location, quality, radiation, and associated symptoms
+- Use ambulance context: paramedic, patient, bystander, scene — not ER/hospital terminology
+- Do NOT invent facts — only extract what was explicitly stated on scene
+- Idempotent merge: never drop previously extracted facts; only add new ones
+- Vitals: capture if spoken (BP, HR, SpO2, RR, GCS, temperature)"""
 
 
 def build_extraction_prompt(transcript: str, existing: Optional[MedicalEntities]) -> str:
     from events import to_dict
     existing_dict = to_dict(existing) if existing else {}
     return "\n".join([
-        "Existing entities (preserve all, only add new):",
+        "Existing entities (preserve all — never drop allergies or medications):",
         json.dumps(existing_dict, indent=2),
         "",
-        "New transcript to process:",
+        "New scene dialogue to process:",
         transcript,
         "",
+        "IMPORTANT: If allergies are mentioned, they MUST appear in the output.",
         "Return the fully merged entities JSON.",
     ])
 
