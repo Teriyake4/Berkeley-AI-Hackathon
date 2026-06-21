@@ -29,9 +29,9 @@ railway variable set \
   ANTHROPIC_MODEL_TIMELINE="${ANTHROPIC_MODEL_TIMELINE:-}" \
   -s "$BACKEND_SERVICE" --skip-deploys
 
-echo "==> Deploying backend"
+echo "==> Deploying backend (FastAPI — uses backend/Dockerfile)"
 cp railway.backend.toml railway.toml
-railway up -y -d -s "$BACKEND_SERVICE"
+railway up -y -d --no-gitignore -s "$BACKEND_SERVICE"
 
 BACKEND_URL="$(railway domain -s "$BACKEND_SERVICE" --json | python3 -c "import sys,json; print(json.load(sys.stdin)['domain'])")"
 echo "    Backend: $BACKEND_URL"
@@ -42,7 +42,7 @@ railway variable set PYTHON_BACKEND_URL="$BACKEND_URL" -s "$FRONTEND_SERVICE" --
 
 echo "==> Deploying frontend (PYTHON_BACKEND_URL=$BACKEND_URL)"
 cp railway.frontend.toml railway.toml
-railway up -y -d -s "$FRONTEND_SERVICE"
+railway up -y -d --no-gitignore -s "$FRONTEND_SERVICE"
 
 FRONTEND_URL="$(railway domain -s "$FRONTEND_SERVICE" --json | python3 -c "import sys,json; print(json.load(sys.stdin)['domain'])")"
 echo "    Frontend: $FRONTEND_URL"

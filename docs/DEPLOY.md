@@ -59,13 +59,21 @@ Manual one-off deploys:
 ```bash
 railway login
 railway link -p YOUR_PROJECT_ID -e production -s nos-backend
-cp railway.backend.toml railway.toml && railway up -y -d -s nos-backend
+cp railway.backend.toml railway.toml && railway up -y -d --no-gitignore -s nos-backend
 
 railway link -s Berkeley-AI-Hackathon
 railway variable set PYTHON_BACKEND_URL=https://YOUR-BACKEND.up.railway.app -s Berkeley-AI-Hackathon
-cp railway.frontend.toml railway.toml && railway up -y -d -s Berkeley-AI-Hackathon
+cp railway.frontend.toml railway.toml && railway up -y -d --no-gitignore -s Berkeley-AI-Hackathon
 rm -f railway.toml
 ```
+
+**Important:** `nos-backend` must **not** use GitHub auto-deploy (it will build the root Next.js Dockerfile). Disconnect with:
+
+```bash
+railway service source disconnect -s nos-backend
+```
+
+Use `./scripts/railway-deploy.sh` or `railway up --no-gitignore` so the temporary `railway.toml` config is included (it's gitignored).
 
 Verify:
 
