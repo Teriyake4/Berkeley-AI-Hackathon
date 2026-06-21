@@ -33,44 +33,45 @@ export function SafetyAlertBanner({
   return (
     <div
       role="alert"
-      className="mx-4 mt-3 rounded-xl border-2 border-red-500 bg-red-600 text-white shadow-lg animate-fade-in"
+      className="animate-fade-in mx-4 mt-3 overflow-hidden rounded-2xl border border-signal-500/50 bg-gradient-to-r from-signal-600/25 via-signal-500/15 to-ink-850 shadow-glow"
     >
-      <div className="px-4 py-3 flex items-start gap-3">
-        <span className="text-2xl shrink-0 animate-pulse" aria-hidden>
-          🚨
+      <div className="flex items-start gap-3 px-4 py-3">
+        <span className="relative mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-signal-500 text-base font-black text-white">
+          !
+          <span className="absolute inset-0 animate-glow-pulse rounded-lg" />
         </span>
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm uppercase tracking-wide text-red-100">
+        <div className="min-w-0 flex-1">
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-signal-300">
             Safety Alert — Action Required
           </p>
           {primaryFlag ? (
             <>
-              <p className="font-semibold text-base mt-0.5 leading-snug">
+              <p className="mt-0.5 text-base font-semibold leading-snug text-white">
                 {primaryFlag.concern}
               </p>
-              <p className="text-sm text-red-100 mt-1 leading-relaxed">
+              <p className="mt-1 text-sm leading-relaxed text-signal-100/85">
                 {primaryFlag.rationale}
               </p>
             </>
           ) : (
-            <p className="font-semibold text-base mt-0.5">
+            <p className="mt-0.5 text-base font-semibold text-white">
               Documented allergies: {allergies.join(", ")} — verify all treatments before
               administration
             </p>
           )}
           {criticalFlags.length > 1 && (
-            <p className="text-xs text-red-200 mt-2 font-medium">
+            <p className="mt-2 font-mono text-[11px] font-medium text-signal-200/80">
               +{criticalFlags.length - 1} additional critical flag
               {criticalFlags.length - 1 !== 1 ? "s" : ""} — see AI Insights panel
             </p>
           )}
         </div>
         {allergies.length > 0 && (
-          <div className="shrink-0 flex flex-col gap-1 items-end">
+          <div className="flex shrink-0 flex-col items-end gap-1">
             {allergies.map((a) => (
               <span
                 key={a}
-                className="text-xs font-bold uppercase px-2 py-1 rounded bg-white text-red-700 border border-red-300"
+                className="rounded-md bg-white px-2 py-1 text-[11px] font-bold uppercase text-signal-700"
               >
                 ⚠ {a}
               </span>
@@ -78,13 +79,13 @@ export function SafetyAlertBanner({
           </div>
         )}
         {allergies.length === 0 && activeMeds.length > 0 && criticalFlags.length > 0 && (
-          <div className="shrink-0 flex flex-col gap-1 items-end">
+          <div className="flex shrink-0 flex-col items-end gap-1">
             {activeMeds.slice(0, 3).map((m) => (
               <span
                 key={m.name}
-                className="text-xs font-bold uppercase px-2 py-1 rounded bg-white text-red-700 border border-red-300"
+                className="rounded-md bg-white px-2 py-1 text-[11px] font-bold uppercase text-signal-700"
               >
-                💊 {m.name}
+                {m.name}
               </span>
             ))}
           </div>

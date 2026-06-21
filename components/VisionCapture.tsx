@@ -248,21 +248,23 @@ export function VisionCapture({
 
   if (readOnly) {
     return (
-      <div className="flex flex-col h-full">
-        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">
-          Vision Captures
-        </h2>
-        <div className="flex-1 overflow-y-auto space-y-2">
+      <div className="flex h-full flex-col">
+        <h2 className="panel-label mb-3">Vision Captures</h2>
+        <div className="flex-1 space-y-2 overflow-y-auto">
           {visionItems.length === 0 && (
-            <p className="text-sm text-slate-400 italic">No vision captures in this session.</p>
+            <p className="font-mono text-sm text-[var(--text-faint)]">
+              No vision captures in this session.
+            </p>
           )}
           {visionItems.map((item, i) => (
             <div
               key={`${item.timestamp}-${i}`}
-              className="text-sm p-3 rounded-lg bg-emerald-50 border border-emerald-200"
+              className="rounded-lg border border-vitals-400/25 bg-vitals-400/[0.08] p-3 text-sm"
             >
-              <span className="font-medium text-emerald-900">{item.identified}</span>
-              <span className="text-xs text-emerald-700 ml-2 capitalize">({item.captureType})</span>
+              <span className="font-medium text-vitals-400">{item.identified}</span>
+              <span className="ml-2 font-mono text-xs capitalize text-[var(--text-faint)]">
+                ({item.captureType})
+              </span>
             </div>
           ))}
         </div>
@@ -271,18 +273,14 @@ export function VisionCapture({
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
-          Live Camera Feed
-        </h2>
+    <div className="flex h-full flex-col">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="panel-label">Live Camera Feed</h2>
         {active && streaming && (
-          <span className="flex items-center gap-1.5 text-xs text-slate-500">
+          <span className="flex items-center gap-1.5 font-mono text-[11px] text-[var(--text-muted)]">
             <span
-              className={`inline-block h-2 w-2 rounded-full ${
-                status === "scanning"
-                  ? "bg-clinical-500 animate-pulse"
-                  : "bg-emerald-500 animate-pulse"
+              className={`inline-block h-2 w-2 animate-pulse rounded-full ${
+                status === "scanning" ? "bg-clinical-400" : "bg-vitals-400"
               }`}
             />
             {status === "scanning" ? "Scanning…" : "Monitoring"}
@@ -290,7 +288,7 @@ export function VisionCapture({
         )}
       </div>
 
-      <div className="relative w-full overflow-hidden rounded-lg bg-slate-900 h-40 sm:h-48">
+      <div className="relative h-40 w-full overflow-hidden rounded-xl border border-[var(--line)] bg-ink-950 sm:h-48">
         {!cameraError ? (
           <video
             ref={videoRef}
@@ -301,23 +299,25 @@ export function VisionCapture({
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center px-4 text-center">
-            <p className="text-xs text-slate-400">
+            <p className="font-mono text-xs text-[var(--text-faint)]">
               Camera unavailable — demo runs from the injector
             </p>
           </div>
         )}
+        {active && streaming && status === "scanning" && (
+          <div className="ecg-scanner pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-transparent via-clinical-400/25 to-transparent" />
+        )}
       </div>
 
       <div className="mt-2 flex items-center justify-between gap-2">
-        <p className="text-xs text-slate-400 leading-tight">
-          Demo uses laptop camera. In the field: chest- or helmet-mounted body
-          cam.
+        <p className="text-xs leading-tight text-[var(--text-faint)]">
+          Demo uses laptop camera. In the field: chest- or helmet-mounted body cam.
         </p>
         {active && streaming && (
           <button
             type="button"
             onClick={() => void captureAndSend()}
-            className="shrink-0 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+            className="shrink-0 rounded-md border border-[var(--line-strong)] px-2 py-1 text-xs font-medium text-[var(--text-muted)] transition-colors hover:bg-white/5 hover:text-white"
           >
             Capture now
           </button>

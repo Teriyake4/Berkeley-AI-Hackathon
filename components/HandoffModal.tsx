@@ -36,15 +36,17 @@ export function HandoffModal({
   const rawTranscript = transcript.map((l) => `[${l.speaker}] ${l.text}`).join("\n");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[92vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/80 p-4 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[92vh] overflow-hidden flex flex-col ring-1 ring-clinical-500/30">
 
         {/* Header */}
-        <div className="px-6 py-4 border-b flex items-center justify-between bg-clinical-900 text-white rounded-t-2xl">
+        <div className="px-6 py-4 border-b border-clinical-800 flex items-center justify-between bg-ink-850 text-white rounded-t-2xl">
           <div>
-            <h2 className="text-lg font-bold">Ambulance → Hospital Handoff</h2>
+            <h2 className="font-display text-lg font-extrabold tracking-tight">
+              Ambulance → Hospital Handoff
+            </h2>
             {report?.generatedAt && (
-              <p className="text-xs text-clinical-300 mt-0.5">
+              <p className="mt-0.5 font-mono text-[11px] text-clinical-300">
                 Generated {new Date(report.generatedAt).toLocaleString()}
               </p>
             )}

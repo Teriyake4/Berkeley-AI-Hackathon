@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useEncounterEvents } from "@/hooks/useEncounterEvents";
+import { NosMark } from "@/components/NosMark";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
 import { SafetyAlertBanner } from "@/components/SafetyAlertBanner";
 import { TranscriptPanel } from "@/components/TranscriptPanel";
@@ -60,36 +61,37 @@ export function Dashboard({ replayEncounterId }: { replayEncounterId?: string })
 
   if (loadingReplay) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500">
+      <div className="flex min-h-screen items-center justify-center bg-ink-900 font-mono text-sm text-[var(--text-faint)]">
+        <span className="mr-2 h-2 w-2 animate-pulse rounded-full bg-clinical-400" />
         Loading session…
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
+    <div className="flex min-h-screen flex-col bg-ink-900 text-[var(--text)]">
       <DisclaimerBanner />
 
       {readOnly && (
-        <div className="bg-slate-800 text-slate-100 px-6 py-2 text-sm flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-4 border-b border-[var(--line)] bg-ink-850 px-6 py-2 text-sm text-[var(--text-muted)]">
           <span>
-            <span className="font-semibold text-amber-300">Replay mode</span>
+            <span className="font-semibold text-amber-400">Replay mode</span>
             {" — "}
             {state.startedAt
               ? `Session from ${formatStartTime(state.startedAt)}`
               : "Viewing archived session"}
             . Recordings disabled.
           </span>
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex shrink-0 items-center gap-3">
             <Link
               href="/logs"
-              className="text-slate-300 hover:text-white underline-offset-2 hover:underline"
+              className="text-[var(--text-muted)] underline-offset-2 hover:text-white hover:underline"
             >
               ← All sessions
             </Link>
             <Link
-              href="/"
-              className="px-3 py-1 rounded-md bg-ambulance-600 text-white text-xs font-semibold hover:bg-ambulance-500"
+              href="/dashboard"
+              className="rounded-md bg-signal-500 px-3 py-1 text-xs font-semibold text-white hover:bg-signal-400"
             >
               New Session
             </Link>
@@ -98,57 +100,62 @@ export function Dashboard({ replayEncounterId }: { replayEncounterId?: string })
       )}
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="bg-ambulance-900 text-white px-6 py-3 flex items-center justify-between shadow-md">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl" aria-hidden>
-            🚑
-          </span>
+      <header className="flex items-center justify-between border-b border-[var(--line)] bg-ink-850/90 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-ink-850/70">
+        <Link href="/" className="flex items-center gap-3">
+          <NosMark size={32} />
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Nos</h1>
-            <p className="text-ambulance-200 text-xs">
-              AI Paramedic Copilot — scene to hospital handoff
+            <h1 className="font-display text-xl font-extrabold leading-none tracking-tight">
+              Nos
+            </h1>
+            <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-faint)]">
+              Paramedic Copilot · scene → handoff
             </p>
           </div>
-        </div>
+        </Link>
 
         <div className="flex items-center gap-3">
           {!readOnly && (
             <>
               <span
-                className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px] font-medium ${
                   state.connected
-                    ? "bg-emerald-500/20 text-emerald-300"
-                    : "bg-red-500/20 text-red-300 animate-pulse"
+                    ? "bg-vitals-400/15 text-vitals-400"
+                    : "animate-pulse bg-signal-500/15 text-signal-300"
                 }`}
               >
-                {state.connected ? "● Connected" : "○ Reconnecting…"}
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    state.connected ? "bg-vitals-400" : "bg-signal-400"
+                  }`}
+                />
+                {state.connected ? "CONNECTED" : "RECONNECTING"}
               </span>
 
               <Link
                 href="/logs"
-                className="px-3 py-2 text-sm font-medium rounded-lg bg-ambulance-800 text-ambulance-100 hover:bg-ambulance-700 border border-ambulance-700 transition-colors"
+                className="rounded-lg border border-[var(--line-strong)] px-3 py-2 text-sm font-medium text-[var(--text-muted)] transition-colors hover:bg-white/5 hover:text-white"
               >
-                Session Log
+                Sessions
               </Link>
 
-              <div className="flex rounded-lg overflow-hidden border border-ambulance-700">
+              <div className="flex overflow-hidden rounded-lg border border-[var(--line-strong)]">
                 <button
                   onClick={() => startEncounter("demo")}
                   disabled={state.mode === "demo" && state.loading}
                   className={`px-4 py-2 text-sm font-medium transition-colors ${
                     state.mode === "demo"
-                      ? "bg-ambulance-500 text-white"
-                      : "bg-ambulance-800 text-ambulance-100 hover:bg-ambulance-700"
+                      ? "bg-clinical-500 text-ink-950"
+                      : "bg-transparent text-[var(--text-muted)] hover:bg-white/5"
                   }`}
                 >
                   {state.mode === "demo" && state.loading ? "Running…" : "Demo"}
                 </button>
                 <button
                   onClick={() => startEncounter("live")}
-                  className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`border-l border-[var(--line-strong)] px-4 py-2 text-sm font-medium transition-colors ${
                     state.mode === "live"
-                      ? "bg-ambulance-500 text-white"
-                      : "bg-ambulance-800 text-ambulance-100 hover:bg-ambulance-700"
+                      ? "bg-signal-500 text-white"
+                      : "bg-transparent text-[var(--text-muted)] hover:bg-white/5"
                   }`}
                 >
                   Live
@@ -160,8 +167,8 @@ export function Dashboard({ replayEncounterId }: { replayEncounterId?: string })
           )}
 
           {readOnly && (
-            <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-slate-500/30 text-slate-200">
-              Archived
+            <span className="rounded-full bg-white/5 px-2.5 py-1 font-mono text-[11px] font-medium text-[var(--text-muted)]">
+              ARCHIVED
             </span>
           )}
         </div>
@@ -169,8 +176,8 @@ export function Dashboard({ replayEncounterId }: { replayEncounterId?: string })
 
       {/* ── Agent activity strip ────────────────────────────────────────────── */}
       {!readOnly && (
-        <div className="bg-clinical-950 border-b border-clinical-800 px-6 py-1.5 flex items-center gap-4">
-          <span className="text-xs text-clinical-400 font-medium mr-1">AGENTS</span>
+        <div className="flex items-center gap-5 border-b border-[var(--line)] bg-ink-950/60 px-6 py-2">
+          <span className="panel-label">Agents</span>
           {Object.entries(AGENT_LABELS).map(([key, label]) => {
             const active = state.activeAgents.has(key);
             return (
@@ -178,13 +185,13 @@ export function Dashboard({ replayEncounterId }: { replayEncounterId?: string })
                 <span
                   className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${
                     active
-                      ? "bg-emerald-400 shadow-[0_0_6px_2px_rgba(52,211,153,0.6)]"
-                      : "bg-clinical-700"
+                      ? "bg-vitals-400 shadow-[0_0_8px_2px_rgba(61,220,151,0.6)]"
+                      : "bg-ink-600"
                   }`}
                 />
                 <span
                   className={`text-xs font-medium transition-colors ${
-                    active ? "text-emerald-300" : "text-clinical-500"
+                    active ? "text-vitals-400" : "text-[var(--text-faint)]"
                   }`}
                 >
                   {label}
@@ -197,13 +204,13 @@ export function Dashboard({ replayEncounterId }: { replayEncounterId?: string })
 
       {/* ── Entity chips bar ────────────────────────────────────────────────── */}
       {state.entities && hasAnyEntities(state.entities) && (
-        <div className="bg-white border-b border-slate-200 px-4 py-2 flex flex-wrap items-center gap-2">
-          <span className="text-xs text-slate-400 font-medium mr-1">EXTRACTED</span>
+        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--line)] bg-ink-850/50 px-4 py-2">
+          <span className="panel-label mr-1">Extracted</span>
           {state.entities.demographics?.age && (
-            <EntityChip label={`${state.entities.demographics.age}yo`} color="purple" />
+            <EntityChip label={`${state.entities.demographics.age}yo`} color="violet" />
           )}
           {state.entities.demographics?.sex && (
-            <EntityChip label={state.entities.demographics.sex} color="purple" />
+            <EntityChip label={state.entities.demographics.sex} color="violet" />
           )}
           {state.entities.symptoms.map((s) => (
             <EntityChip key={s} label={s} color="amber" />
@@ -213,17 +220,17 @@ export function Dashboard({ replayEncounterId }: { replayEncounterId?: string })
               key={m.name}
               label={
                 m.dose?.includes("administered")
-                  ? `💉 ${m.name} (given on scene)`
+                  ? `${m.name} (given on scene)`
                   : m.name
               }
-              color={m.dose?.includes("administered") ? "red" : "blue"}
+              color={m.dose?.includes("administered") ? "signal" : "cyan"}
             />
           ))}
           {state.entities.conditions.map((c) => (
             <EntityChip key={c} label={c} color="slate" />
           ))}
           {state.entities.allergies.map((a) => (
-            <EntityChip key={a} label={`⚠ ${a} allergy`} color="red" />
+            <EntityChip key={a} label={`⚠ ${a} allergy`} color="signal" />
           ))}
         </div>
       )}
@@ -231,15 +238,15 @@ export function Dashboard({ replayEncounterId }: { replayEncounterId?: string })
       <SafetyAlertBanner safetyFlags={state.safetyFlags} entities={state.entities} />
 
       {/* ── Main panels ─────────────────────────────────────────────────────── */}
-      <main className="flex-1 p-4 grid grid-rows-[1fr_auto] gap-4 overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0">
-          <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 p-4 shadow-sm min-h-[280px] lg:min-h-0 flex flex-col">
+      <main className="grid flex-1 grid-rows-[1fr_auto] gap-4 overflow-hidden p-4">
+        <div className="grid min-h-0 grid-cols-1 gap-4 lg:grid-cols-12">
+          <div className="panel flex min-h-[280px] flex-col p-4 lg:col-span-3 lg:min-h-0">
             <TranscriptPanel lines={state.transcript} />
           </div>
-          <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200 p-4 shadow-sm min-h-[280px] lg:min-h-0 flex flex-col">
+          <div className="panel flex min-h-[280px] flex-col p-4 lg:col-span-5 lg:min-h-0">
             <TimelinePanel events={state.timeline} />
           </div>
-          <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-4 shadow-sm min-h-[280px] lg:min-h-0 flex flex-col">
+          <div className="panel flex min-h-[280px] flex-col p-4 lg:col-span-4 lg:min-h-0">
             <InsightsPanel
               safetyFlags={state.safetyFlags}
               missingInfo={missingInfo}
@@ -249,8 +256,8 @@ export function Dashboard({ replayEncounterId }: { replayEncounterId?: string })
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+          <div className="panel p-4 lg:col-span-4">
             <VisionCapture
               active={!readOnly}
               readOnly={readOnly}
@@ -258,21 +265,21 @@ export function Dashboard({ replayEncounterId }: { replayEncounterId?: string })
               visionItems={state.visionItems}
             />
           </div>
-          <div className="lg:col-span-8 bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="panel p-4 lg:col-span-8">
             <SoapPanel soap={state.soap} />
           </div>
         </div>
       </main>
 
       {/* ── Footer ──────────────────────────────────────────────────────────── */}
-      <footer className="px-6 py-3 border-t bg-white flex items-center justify-between gap-6">
-        <div className="flex-1 min-w-0">
+      <footer className="flex items-center justify-between gap-6 border-t border-[var(--line)] bg-ink-850/80 px-6 py-3">
+        <div className="min-w-0 flex-1">
           <TelemetryBar phase={state.phase} />
         </div>
         <button
           onClick={handleHandoff}
           disabled={state.transcript.length === 0}
-          className="px-6 py-2.5 rounded-lg bg-ambulance-600 text-white font-semibold text-sm hover:bg-ambulance-700 active:bg-ambulance-800 disabled:opacity-40 disabled:cursor-not-allowed shadow-md transition-colors shrink-0"
+          className="shrink-0 rounded-lg bg-signal-500 px-6 py-2.5 text-sm font-semibold text-white shadow-glow transition-transform hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none disabled:hover:translate-y-0"
         >
           {readOnly ? "View Handoff Report" : "Generate Handoff Report"}
         </button>
@@ -300,11 +307,11 @@ function hasAnyEntities(e: MedicalEntities): boolean {
 }
 
 const chipColors = {
-  purple: "bg-purple-50 text-purple-800 border-purple-200",
-  amber: "bg-amber-50 text-amber-800 border-amber-200",
-  blue: "bg-blue-50 text-blue-800 border-blue-200",
-  slate: "bg-slate-100 text-slate-700 border-slate-200",
-  red: "bg-red-50 text-red-800 border-red-200",
+  violet: "bg-violet-400/10 text-violet-200 border-violet-400/25",
+  amber: "bg-amber-400/10 text-amber-200 border-amber-400/25",
+  cyan: "bg-clinical-400/10 text-clinical-200 border-clinical-400/30",
+  slate: "bg-white/5 text-[var(--text-muted)] border-[var(--line-strong)]",
+  signal: "bg-signal-500/15 text-signal-200 border-signal-500/35",
 };
 
 function EntityChip({
@@ -316,7 +323,7 @@ function EntityChip({
 }) {
   return (
     <span
-      className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full border animate-fade-in capitalize ${chipColors[color]}`}
+      className={`animate-fade-in inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize ${chipColors[color]}`}
     >
       {label}
     </span>

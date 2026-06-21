@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { NosMark } from "@/components/NosMark";
 import type { SessionSummary } from "@/types/session";
 
 function formatStartTime(iso: string): string {
@@ -36,57 +37,59 @@ export function SessionLogList() {
   }, [loadSessions]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      <header className="bg-ambulance-900 text-white px-6 py-4 flex items-center justify-between shadow-md">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl" aria-hidden>
-            🚑
-          </span>
+    <div className="flex min-h-screen flex-col bg-ink-900 text-[var(--text)]">
+      <header className="flex items-center justify-between border-b border-[var(--line)] bg-ink-850/90 px-6 py-3.5 backdrop-blur">
+        <Link href="/" className="flex items-center gap-3">
+          <NosMark size={32} />
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Session Log</h1>
-            <p className="text-ambulance-200 text-xs">Past encounters sorted by start time</p>
+            <h1 className="font-display text-xl font-extrabold leading-none tracking-tight">
+              Session Log
+            </h1>
+            <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-faint)]">
+              Past encounters · newest first
+            </p>
           </div>
-        </div>
+        </Link>
         <div className="flex items-center gap-3">
           <Link
-            href="/"
-            className="px-4 py-2 text-sm font-semibold rounded-lg bg-ambulance-500 text-white hover:bg-ambulance-400 transition-colors shadow-md"
+            href="/dashboard"
+            className="rounded-lg border border-[var(--line-strong)] px-3 py-2 text-sm font-medium text-[var(--text-muted)] transition-colors hover:bg-white/5 hover:text-white"
           >
-            New Session
+            Live Console
           </Link>
           <Link
-            href="/"
-            className="px-3 py-2 text-sm font-medium rounded-lg bg-ambulance-800 text-ambulance-100 hover:bg-ambulance-700 border border-ambulance-700 transition-colors"
+            href="/dashboard"
+            className="rounded-lg bg-signal-500 px-4 py-2 text-sm font-semibold text-white shadow-glow transition-transform hover:-translate-y-0.5"
           >
-            Live Dashboard
+            New Session
           </Link>
         </div>
       </header>
 
-      <main className="flex-1 max-w-3xl w-full mx-auto p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
-            Sessions
-          </h2>
+      <main className="mx-auto w-full max-w-3xl flex-1 p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="panel-label">Sessions</h2>
           <button
             type="button"
             onClick={loadSessions}
-            className="text-sm text-ambulance-600 hover:text-ambulance-800 font-medium"
+            className="font-mono text-xs text-clinical-300 transition-colors hover:text-clinical-200"
           >
-            Refresh
+            ↻ Refresh
           </button>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="overflow-hidden rounded-2xl border border-[var(--line)] bg-ink-850">
           {loading && (
-            <p className="text-sm text-slate-400 italic p-6">Loading sessions…</p>
+            <p className="p-6 font-mono text-sm text-[var(--text-faint)]">
+              Loading sessions…
+            </p>
           )}
           {!loading && sessions.length === 0 && (
-            <div className="p-8 text-center">
-              <p className="text-slate-500 mb-4">No sessions recorded yet.</p>
+            <div className="p-10 text-center">
+              <p className="mb-4 text-[var(--text-muted)]">No sessions recorded yet.</p>
               <Link
-                href="/"
-                className="inline-block px-4 py-2 text-sm font-semibold rounded-lg bg-ambulance-600 text-white hover:bg-ambulance-700"
+                href="/dashboard"
+                className="inline-block rounded-lg bg-signal-500 px-4 py-2 text-sm font-semibold text-white shadow-glow"
               >
                 Start New Session
               </Link>
@@ -96,39 +99,41 @@ export function SessionLogList() {
             <Link
               key={session.encounterId}
               href={`/logs/${session.encounterId}`}
-              className="block px-5 py-4 border-b border-slate-100 last:border-b-0 hover:bg-ambulance-50 transition-colors"
+              className="block border-b border-[var(--line)] px-5 py-4 transition-colors last:border-b-0 hover:bg-white/[0.03]"
             >
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-base font-medium text-slate-900">
+                  <div className="text-base font-medium text-[var(--text)]">
                     {session.startedAt
                       ? formatStartTime(session.startedAt)
                       : "Unknown start time"}
                   </div>
-                  <div className="flex items-center gap-2 mt-1.5">
+                  <div className="mt-1.5 flex items-center gap-2">
                     <span
-                      className={`text-xs px-2 py-0.5 rounded capitalize font-medium ${
+                      className={`rounded px-2 py-0.5 font-mono text-[11px] font-medium capitalize ${
                         session.mode === "demo"
-                          ? "bg-blue-100 text-blue-800"
+                          ? "bg-clinical-400/15 text-clinical-200"
                           : session.mode === "live"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-slate-100 text-slate-600"
+                            ? "bg-vitals-400/15 text-vitals-400"
+                            : "bg-white/5 text-[var(--text-faint)]"
                       }`}
                     >
                       {session.mode}
                     </span>
                     <span
-                      className={`text-xs px-2 py-0.5 rounded capitalize font-medium ${
+                      className={`rounded px-2 py-0.5 font-mono text-[11px] font-medium capitalize ${
                         session.status === "active"
-                          ? "bg-amber-100 text-amber-800"
-                          : "bg-slate-100 text-slate-600"
+                          ? "bg-amber-400/15 text-amber-300"
+                          : "bg-white/5 text-[var(--text-faint)]"
                       }`}
                     >
                       {session.status}
                     </span>
                   </div>
                 </div>
-                <span className="text-slate-400 text-sm shrink-0">View →</span>
+                <span className="shrink-0 font-mono text-sm text-[var(--text-faint)]">
+                  View →
+                </span>
               </div>
             </Link>
           ))}

@@ -3,27 +3,147 @@
 @tailwind utilities;
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #0a0e16;
+  --foreground: #e8eef6;
+
+  --ink-900: #0a0e16;
+  --ink-850: #0d1320;
+  --ink-800: #111a2b;
+  --ink-700: #172236;
+
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.13);
+
+  --text: #e8eef6;
+  --text-muted: #9aa7ba;
+  --text-faint: #5d6b80;
+
+  --signal: #ff4536;
+  --cyan: #22d4ec;
+  --mint: #3ddc97;
+  --amber: #ffb43d;
+}
+
+* {
+  border-color: var(--line);
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
+/* Console-grade scrollbars */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.32);
+  background-clip: padding-box;
+}
+
+/* ── Atmosphere ─────────────────────────────────────────────────────── */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.bg-aurora {
+  background:
+    radial-gradient(60% 50% at 12% -5%, rgba(255, 69, 54, 0.16), transparent 60%),
+    radial-gradient(55% 55% at 92% 0%, rgba(34, 212, 236, 0.13), transparent 60%),
+    radial-gradient(70% 60% at 50% 120%, rgba(34, 212, 236, 0.07), transparent 70%);
+}
+
+/* Panel surface used across the console */
+.panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0) 40%),
+    var(--ink-850);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.panel-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* ── Animations ─────────────────────────────────────────────────────── */
 @keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.animate-fade-in {
-  animation: fade-in 0.3s ease-out forwards;
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-rise {
+  opacity: 0;
+  animation: rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 69, 54, 0.5); }
+  50% { box-shadow: 0 0 0 7px rgba(255, 69, 54, 0); }
+}
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-out infinite;
+}
+
+/* ECG sweep — signature motif */
+@keyframes ecg-dash {
+  to { stroke-dashoffset: 0; }
+}
+.ecg-trace {
+  stroke-dasharray: 1400;
+  stroke-dashoffset: 1400;
+  animation: ecg-dash 3.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes ecg-scan {
+  0% { transform: translateX(-8%); opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { transform: translateX(108%); opacity: 0; }
+}
+.ecg-scanner {
+  animation: ecg-scan 3.4s linear infinite;
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+.animate-float {
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+@media print {
+  body { background: #fff; color: #000; }
 }

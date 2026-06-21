@@ -3,32 +3,32 @@ import type { Citation } from "@/types/events";
 
 const severityConfig = {
   critical: {
-    card: "border-red-600 bg-red-100 ring-1 ring-red-500",
-    label: "bg-red-700 text-white",
-    text: "text-red-950",
-    subtext: "text-red-800",
-    icon: "🆘",
+    card: "border-signal-500/60 bg-signal-500/15 ring-1 ring-signal-500/40",
+    label: "bg-signal-600 text-white",
+    text: "text-signal-100",
+    subtext: "text-signal-200/80",
+    bar: "bg-signal-500",
   },
   high: {
-    card: "border-red-300 bg-red-50",
-    label: "bg-red-500 text-white",
-    text: "text-red-900",
-    subtext: "text-red-700",
-    icon: "🚨",
+    card: "border-signal-500/35 bg-signal-500/10",
+    label: "bg-signal-500 text-white",
+    text: "text-signal-100",
+    subtext: "text-signal-200/75",
+    bar: "bg-signal-500",
   },
   medium: {
-    card: "border-amber-300 bg-amber-50",
-    label: "bg-amber-500 text-white",
-    text: "text-amber-900",
-    subtext: "text-amber-700",
-    icon: "⚠️",
+    card: "border-amber-400/30 bg-amber-400/10",
+    label: "bg-amber-400 text-ink-950",
+    text: "text-amber-100",
+    subtext: "text-amber-200/75",
+    bar: "bg-amber-400",
   },
   low: {
-    card: "border-blue-200 bg-blue-50",
-    label: "bg-blue-500 text-white",
-    text: "text-blue-900",
-    subtext: "text-blue-700",
-    icon: "ℹ️",
+    card: "border-clinical-400/25 bg-clinical-400/10",
+    label: "bg-clinical-400 text-ink-950",
+    text: "text-clinical-100",
+    subtext: "text-clinical-200/75",
+    bar: "bg-clinical-400",
   },
 };
 
@@ -59,65 +59,63 @@ export function InsightsPanel({
   });
 
   return (
-    <div className="flex flex-col h-full">
-      <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">
-        AI Insights
-      </h2>
-      <div className="flex-1 overflow-y-auto space-y-4 pr-0.5">
-
+    <div className="flex h-full flex-col">
+      <h2 className="panel-label mb-3">AI Insights</h2>
+      <div className="flex-1 space-y-5 overflow-y-auto pr-0.5">
         {/* Safety Flags */}
         <section>
-          <h3 className="text-xs font-semibold text-slate-500 uppercase mb-2 flex items-center gap-1.5">
+          <h3 className="panel-label mb-2 flex items-center gap-1.5 normal-case tracking-[0.14em]">
             Safety Flags
             {realFlags.length > 0 && (
-              <span className="bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold leading-none">
+              <span className="rounded-full bg-signal-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
                 {realFlags.length}
               </span>
             )}
           </h3>
           {sortedFlags.length === 0 ? (
-            <p className="text-sm text-slate-400 italic">No concerns flagged yet</p>
+            <p className="font-mono text-sm text-[var(--text-faint)]">
+              No concerns flagged yet
+            </p>
           ) : (
             sortedFlags.map((flag, i) => {
               const cfg = severityConfig[flag.severity];
               return (
                 <div
                   key={i}
-                  className={`rounded-lg border p-3 mb-2 animate-fade-in ${cfg.card}`}
+                  className={`animate-fade-in relative mb-2 overflow-hidden rounded-xl border p-3 pl-4 ${cfg.card}`}
                 >
-                  <div className="flex items-start gap-2">
-                    <span className="text-sm">{cfg.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span
-                          className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${cfg.label}`}
-                        >
-                          {flag.severity}
-                        </span>
-                      </div>
-                      <p className={`text-sm font-semibold leading-snug ${cfg.text}`}>
-                        {flag.concern}
-                      </p>
-                      <p className={`text-xs mt-1 leading-relaxed ${cfg.subtext}`}>
-                        {flag.rationale}
-                      </p>
-                      {flag.clarifyingQuestion && (
-                        <p className="text-xs mt-2 font-medium text-slate-600 bg-white/60 rounded px-2 py-1 border border-slate-200">
-                          💬 {flag.clarifyingQuestion}
-                        </p>
-                      )}
-                      {flag.recommendedActions && flag.recommendedActions.length > 0 && (
-                        <ul className="mt-2 space-y-1">
-                          {flag.recommendedActions.map((action, j) => (
-                            <li key={j} className="flex items-start gap-1.5 text-xs text-slate-700">
-                              <span className="mt-0.5 shrink-0 text-emerald-600">→</span>
-                              <span>{action}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
+                  <span className={`absolute inset-y-0 left-0 w-1 ${cfg.bar}`} />
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${cfg.label}`}
+                    >
+                      {flag.severity}
+                    </span>
                   </div>
+                  <p className={`mt-1.5 text-sm font-semibold leading-snug ${cfg.text}`}>
+                    {flag.concern}
+                  </p>
+                  <p className={`mt-1 text-xs leading-relaxed ${cfg.subtext}`}>
+                    {flag.rationale}
+                  </p>
+                  {flag.clarifyingQuestion && (
+                    <p className="mt-2 rounded-lg border border-[var(--line-strong)] bg-ink-900/60 px-2 py-1 text-xs font-medium text-[var(--text-muted)]">
+                      “{flag.clarifyingQuestion}”
+                    </p>
+                  )}
+                  {flag.recommendedActions && flag.recommendedActions.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {flag.recommendedActions.map((action, j) => (
+                        <li
+                          key={j}
+                          className="flex items-start gap-1.5 text-xs text-[var(--text-muted)]"
+                        >
+                          <span className="mt-0.5 shrink-0 text-vitals-400">→</span>
+                          <span>{action}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               );
             })
@@ -127,26 +125,25 @@ export function InsightsPanel({
         {/* NREMT Reminders */}
         {nremtFlags.length > 0 && (
           <section>
-            <h3 className="text-xs font-semibold text-slate-500 uppercase mb-2 flex items-center gap-1.5">
-              <span>📋</span>
+            <h3 className="panel-label mb-2 flex items-center gap-1.5 normal-case tracking-[0.14em]">
               NREMT Reminders
-              <span className="bg-amber-400 text-amber-900 text-xs rounded-full px-1.5 py-0.5 font-bold leading-none">
+              <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold leading-none text-ink-950">
                 {nremtFlags.length}
               </span>
             </h3>
-            <ul className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+            <ul className="space-y-1.5 rounded-xl border border-amber-400/25 bg-amber-400/[0.07] p-3">
               {nremtFlags.map((flag, i) => (
                 <li
                   key={i}
-                  className="flex items-start gap-2 text-sm text-slate-700 animate-fade-in"
+                  className="animate-fade-in flex items-start gap-2 text-sm text-[var(--text-muted)]"
                 >
-                  <span className="mt-0.5 shrink-0 text-amber-500">☐</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="leading-snug text-slate-700">
+                  <span className="mt-0.5 shrink-0 text-amber-400">☐</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="leading-snug text-[var(--text)]">
                       {flag.concern.replace(NREMT_PREFIX, "").trim()}
                     </p>
                     {flag.rationale && (
-                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                      <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-faint)]">
                         {flag.rationale}
                       </p>
                     )}
@@ -160,13 +157,16 @@ export function InsightsPanel({
         {/* Missing Information */}
         {missingInfo.length > 0 && (
           <section>
-            <h3 className="text-xs font-semibold text-slate-500 uppercase mb-2">
+            <h3 className="panel-label mb-2 normal-case tracking-[0.14em]">
               Missing Information
             </h3>
             <ul className="space-y-1.5">
               {missingInfo.map((item) => (
-                <li key={item} className="flex items-center gap-2 text-sm text-slate-600">
-                  <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" />
+                <li
+                  key={item}
+                  className="flex items-center gap-2 text-sm text-[var(--text-muted)]"
+                >
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
                   {item}
                 </li>
               ))}
@@ -177,16 +177,16 @@ export function InsightsPanel({
         {/* Suggested Follow-Up Questions */}
         {suggestedFollowUps.length > 0 && (
           <section>
-            <h3 className="text-xs font-semibold text-slate-500 uppercase mb-2">
+            <h3 className="panel-label mb-2 normal-case tracking-[0.14em]">
               Suggested Questions
             </h3>
             <ul className="space-y-1.5">
               {suggestedFollowUps.map((q) => (
                 <li
                   key={q}
-                  className="flex items-start gap-2 text-sm text-slate-700 bg-slate-50 rounded-lg px-3 py-2 border border-slate-200 animate-fade-in"
+                  className="animate-fade-in flex items-start gap-2 rounded-lg border border-[var(--line)] bg-ink-900/50 px-3 py-2 text-sm text-[var(--text-muted)]"
                 >
-                  <span className="text-clinical-500 mt-0.5 shrink-0">?</span>
+                  <span className="mt-0.5 shrink-0 font-mono text-clinical-400">?</span>
                   {q}
                 </li>
               ))}
@@ -196,42 +196,49 @@ export function InsightsPanel({
 
         {/* Research Citations */}
         <section>
-          <h3 className="text-xs font-semibold text-slate-500 uppercase mb-2 flex items-center gap-1.5">
+          <h3 className="panel-label mb-2 flex items-center gap-1.5 normal-case tracking-[0.14em]">
             Research
             {research.length > 0 && (
-              <span className="bg-clinical-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold leading-none">
+              <span className="rounded-full bg-clinical-400 px-1.5 py-0.5 text-[10px] font-bold leading-none text-ink-950">
                 {research.length}
               </span>
             )}
           </h3>
           {research.length === 0 ? (
-            <p className="text-sm text-slate-400 italic">Research agent idle</p>
+            <p className="font-mono text-sm text-[var(--text-faint)]">
+              Research agent idle
+            </p>
           ) : (
             research.map((r, i) => (
               <div
                 key={i}
-                className="mb-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0 last:mb-0 animate-fade-in"
+                className="animate-fade-in mb-4 border-b border-[var(--line)] pb-4 last:mb-0 last:border-0 last:pb-0"
               >
-                <p className="text-xs font-semibold text-clinical-700 mb-1 uppercase tracking-wide">
+                <p className="mb-1 font-mono text-[11px] font-semibold uppercase tracking-wide text-clinical-300">
                   {r.query}
                 </p>
-                <p className="text-sm text-slate-700 leading-relaxed mb-2">{r.findings}</p>
+                <p className="mb-2 text-sm leading-relaxed text-[var(--text-muted)]">
+                  {r.findings}
+                </p>
                 <div className="space-y-2">
                   {r.citations.map((c, j) => (
-                    <div key={j} className="rounded-md bg-slate-50 border border-slate-100 px-2.5 py-1.5">
+                    <div
+                      key={j}
+                      className="rounded-lg border border-[var(--line)] bg-ink-900/50 px-2.5 py-1.5"
+                    >
                       <a
                         href={c.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-start gap-1.5 group"
+                        className="group flex items-start gap-1.5"
                       >
-                        <span className="text-clinical-400 mt-0.5 shrink-0 text-xs">↗</span>
-                        <span className="text-xs font-medium text-clinical-700 group-hover:underline leading-snug">
+                        <span className="mt-0.5 shrink-0 text-xs text-clinical-400">↗</span>
+                        <span className="text-xs font-medium leading-snug text-clinical-200 group-hover:underline">
                           {c.title}
                         </span>
                       </a>
                       {c.snippet && (
-                        <p className="text-[11px] text-slate-500 leading-snug mt-1 pl-4">
+                        <p className="mt-1 pl-4 text-[11px] leading-snug text-[var(--text-faint)]">
                           {c.snippet}
                         </p>
                       )}
