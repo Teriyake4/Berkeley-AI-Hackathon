@@ -6,14 +6,17 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, TypeVar
 
 from redis_layer.client import get_redis_publisher, mark_redis_unavailable
 from redis_layer.keys import ACTIVE_SESSION, SESSIONS_INDEX, EncounterKeys
 
 logger = logging.getLogger(__name__)
+
+SESSION_RETENTION_DAYS = int(os.environ.get("SESSION_RETENTION_DAYS", "14"))
 
 T = TypeVar("T")
 
@@ -301,6 +304,7 @@ async def finalize_active_session() -> None:
 
 
 async def list_sessions() -> List[Dict[str, Any]]:
+    await purge_expired_sessions()
     entries = await _zrevrange(SESSIONS_INDEX)
     sessions: List[Dict[str, Any]] = []
     for encounter_id, _score in entries:
@@ -316,6 +320,44 @@ async def list_sessions() -> List[Dict[str, Any]]:
             }
         )
     return sessions
+
+
+def _session_started_at(meta: Dict[str, Any], score_ms: float) -> datetime:
+    started_at_str = meta.get("startedAt")
+    if started_at_str:
+        try:
+            return datetime.fromisoformat(started_at_str.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+    if score_ms:
+        return datetime.fromtimestamp(score_ms / 1000, tz=timezone.utc)
+    return datetime.now(timezone.utc)
+
+
+async def purge_expired_sessions(max_age_days: Optional[int] = None) -> int:
+    """Remove sessions older than max_age_days (default SESSION_RETENTION_DAYS)."""
+    days = SESSION_RETENTION_DAYS if max_age_days is None else max_age_days
+    if days <= 0:
+        return 0
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    removed = 0
+    for encounter_id, score in await _zrevrange(SESSIONS_INDEX):
+        meta = await get_session_meta(encounter_id) or {}
+        started = _session_started_at(meta, score)
+        if started < cutoff:
+            await discard_session(encounter_id)
+            removed += 1
+    if removed:
+        logger.info("[state] purged %d expired session(s) (>%d days)", removed, days)
+    return removed
+
+
+async def delete_session_log(encounter_id: str) -> bool:
+    """Delete a saved session from the log index and wipe its Redis keys."""
+    if not await is_session_registered(encounter_id):
+        return False
+    await discard_session(encounter_id)
+    return True
 
 
 def _parse_transcript_lines(raw: str) -> List[Dict[str, str]]:

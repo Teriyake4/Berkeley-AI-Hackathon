@@ -29,11 +29,24 @@ railway variable set \
   ANTHROPIC_MODEL_TIMELINE="${ANTHROPIC_MODEL_TIMELINE:-}" \
   -s "$BACKEND_SERVICE" --skip-deploys
 
+read_domain() {
+  python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+if isinstance(data.get('domain'), str):
+    print(data['domain'])
+elif data.get('domains'):
+    print(data['domains'][0])
+else:
+    raise SystemExit('no domain found in railway domain output')
+"
+}
+
 echo "==> Deploying backend (FastAPI — uses backend/Dockerfile)"
 cp railway.backend.toml railway.toml
 railway up -y -d --no-gitignore -s "$BACKEND_SERVICE"
 
-BACKEND_URL="$(railway domain -s "$BACKEND_SERVICE" --json | python3 -c "import sys,json; print(json.load(sys.stdin)['domain'])")"
+BACKEND_URL="$(railway domain -s "$BACKEND_SERVICE" --json | read_domain)"
 echo "    Backend: $BACKEND_URL"
 
 echo "==> Setting frontend variables on $FRONTEND_SERVICE"
@@ -44,7 +57,7 @@ echo "==> Deploying frontend (PYTHON_BACKEND_URL=$BACKEND_URL)"
 cp railway.frontend.toml railway.toml
 railway up -y -d --no-gitignore -s "$FRONTEND_SERVICE"
 
-FRONTEND_URL="$(railway domain -s "$FRONTEND_SERVICE" --json | python3 -c "import sys,json; print(json.load(sys.stdin)['domain'])")"
+FRONTEND_URL="$(railway domain -s "$FRONTEND_SERVICE" --json | read_domain)"
 echo "    Frontend: $FRONTEND_URL"
 
 rm -f railway.toml

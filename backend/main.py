@@ -44,6 +44,12 @@ async def lifespan(app: FastAPI):
     if os.environ.get("REDIS_URL"):
         if not await ping_redis():
             reset_event_bus()
+        else:
+            from redis_layer.state import purge_expired_sessions
+
+            expired = await purge_expired_sessions()
+            if expired:
+                logger.info("[main] purged %d expired session(s) from Redis", expired)
 
     await ensure_agents_started()
     logger.info("[main] Nos Python backend ready")

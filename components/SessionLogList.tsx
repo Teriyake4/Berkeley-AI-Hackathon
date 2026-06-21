@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { NosMark } from "@/components/NosMark";
 import type { SessionSummary } from "@/types/session";
 
+const RETENTION_DAYS = 14;
+
 function formatStartTime(iso: string): string {
   try {
     return new Date(iso).toLocaleString(undefined, {
@@ -19,6 +21,7 @@ function formatStartTime(iso: string): string {
 export function SessionLogList() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadSessions = useCallback(async () => {
     setLoading(true);
@@ -35,6 +38,28 @@ export function SessionLogList() {
   useEffect(() => {
     loadSessions();
   }, [loadSessions]);
+
+  const handleDelete = async (encounterId: string, startedAt?: string) => {
+    const label = startedAt ? formatStartTime(startedAt) : "this session";
+    if (
+      !window.confirm(
+        `Delete the session from ${label}? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    setDeletingId(encounterId);
+    try {
+      const res = await fetch(`/api/sessions/${encounterId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) return;
+      setSessions((prev) => prev.filter((s) => s.encounterId !== encounterId));
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-ink-900 text-[var(--text)]">
@@ -78,6 +103,10 @@ export function SessionLogList() {
           </button>
         </div>
 
+        <p className="mb-4 text-xs text-[var(--text-faint)]">
+          Sessions older than {RETENTION_DAYS} days are deleted automatically.
+        </p>
+
         <div className="overflow-hidden rounded-2xl border border-[var(--line)] bg-ink-850">
           {loading && (
             <p className="p-6 font-mono text-sm text-[var(--text-faint)]">
@@ -96,12 +125,14 @@ export function SessionLogList() {
             </div>
           )}
           {sessions.map((session) => (
-            <Link
+            <div
               key={session.encounterId}
-              href={`/logs/${session.encounterId}`}
-              className="block border-b border-[var(--line)] px-5 py-4 transition-colors last:border-b-0 hover:bg-white/[0.03]"
+              className="flex items-stretch border-b border-[var(--line)] last:border-b-0"
             >
-              <div className="flex items-center justify-between gap-4">
+              <Link
+                href={`/logs/${session.encounterId}`}
+                className="flex flex-1 items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-white/[0.03]"
+              >
                 <div>
                   <div className="text-base font-medium text-[var(--text)]">
                     {session.startedAt
@@ -132,8 +163,19 @@ export function SessionLogList() {
                 <span className="shrink-0 font-mono text-sm text-[var(--text-faint)]">
                   View →
                 </span>
-              </div>
-            </Link>
+              </Link>
+              <button
+                type="button"
+                onClick={() =>
+                  handleDelete(session.encounterId, session.startedAt)
+                }
+                disabled={deletingId === session.encounterId}
+                className="border-l border-[var(--line)] px-4 text-xs font-medium text-[var(--text-faint)] transition-colors hover:bg-signal-500/10 hover:text-signal-300 disabled:opacity-50"
+                aria-label={`Delete session from ${session.startedAt ?? "unknown date"}`}
+              >
+                {deletingId === session.encounterId ? "…" : "Delete"}
+              </button>
+            </div>
           ))}
         </div>
       </main>

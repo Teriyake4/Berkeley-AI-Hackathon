@@ -23,6 +23,7 @@ from redis_layer.client import is_redis_available, ping_redis
 from redis_layer.keys import ENCOUNTER_ID
 from redis_layer.state import (
     append_transcript_line,
+    delete_session_log,
     finalize_active_session,
     finalize_session,
     get_encounter_snapshot,
@@ -199,6 +200,14 @@ async def get_session_snapshot(encounter_id: str):
     if snapshot is None:
         return JSONResponse({"error": "session not found"}, status_code=404)
     return JSONResponse(snapshot)
+
+
+@router.delete("/api/sessions/{encounter_id}")
+async def delete_session(encounter_id: str):
+    deleted = await delete_session_log(encounter_id)
+    if not deleted:
+        return JSONResponse({"error": "session not found"}, status_code=404)
+    return JSONResponse({"encounterId": encounter_id, "deleted": True})
 
 
 # ── Transcript ──────────────────────────────────────────────────────────────
