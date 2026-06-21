@@ -398,6 +398,28 @@ async def start_safety_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None]:
         active_meds = await _get_active_meds(encounter_id)
         fired = _get_fired(encounter_id)
 
+        # Extra context for the comprehensive patient chart
+        vision_raw = await load_json(EncounterKeys.vision_items(encounter_id)) or []
+        # Only pass high/medium confidence items — low confidence is noise
+        vision_items = [
+            v for v in vision_raw
+            if isinstance(v, dict) and v.get("confidence") in ("high", "medium")
+        ]
+
+        # Derive NREMT gaps — items not yet covered in the assessment
+        nremt_raw = await load_json(EncounterKeys.nremt_covered(encounter_id)) or {}
+        nremt_gaps = [reminder for key, reminder in NREMT_ITEMS if not nremt_raw.get(key)]
+
+        # Recent paramedic statements (last 20 paramedic lines for action context)
+        transcript_lines_raw = await load_json(EncounterKeys.transcript_lines(encounter_id)) or []
+        recent_paramedic_lines: list[str] = []
+        for line in (transcript_lines_raw[-40:] if isinstance(transcript_lines_raw, list) else []):
+            speaker = (line.get("speaker", "") if isinstance(line, dict) else "").lower()
+            text = line.get("text", "") if isinstance(line, dict) else str(line)
+            if speaker in ("paramedic", "doctor", "emt") and text:
+                recent_paramedic_lines.append(text)
+        recent_paramedic_lines = recent_paramedic_lines[-20:]
+
         flags: List[SafetyResult] = []
         llm_result = None
 
@@ -405,7 +427,15 @@ async def start_safety_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None]:
             try:
                 llm_result = await call_claude_json(
                     SAFETY_SYSTEM,
-                    build_safety_prompt(entities, transcript, research_briefs=all_research),
+                    build_safety_prompt(
+                        entities,
+                        transcript,
+                        research_briefs=all_research,
+                        active_meds=active_meds,
+                        vision_items=vision_items if vision_items else None,
+                        nremt_gaps=nremt_gaps if nremt_gaps else None,
+                        recent_actions=recent_paramedic_lines if recent_paramedic_lines else None,
+                    ),
                     "safety",
                 )
                 if llm_result and isinstance(llm_result, list):
@@ -589,9 +619,25 @@ async def start_safety_agent(bus: InMemoryBus | RedisBus) -> Callable[[], None]:
             await _check_administered_medications(encounter_id, text, speaker)
             await _check_transcript_allergy_conflict(encounter_id, text, speaker)
 
-        # Re-run LLM safety on transcript activity (don't wait for extraction debounce)
+        # Immediate heuristic trauma check on every line — don't wait for the debounce.
+        # This catches dangerous manipulation proposals (e.g. "I'm going to shake it")
+        # combined with severe limb trauma stated earlier in the transcript.
         from redis_layer.state import get_transcript
+        from prompts.safety import check_trauma_procedure_risks
         full = await get_transcript(encounter_id)
+        facts_raw = await load_json(EncounterKeys.facts(encounter_id))
+        _symptoms = entities_from_dict(facts_raw).symptoms if facts_raw else []
+        for flag in check_trauma_procedure_risks(_symptoms, full):
+            await _fire_flag(
+                bus, encounter_id,
+                concern=flag.concern,
+                severity=flag.severity,
+                rationale=flag.rationale,
+                prior_concerns=_get_fired(encounter_id),
+                recommended_actions=flag.recommendedActions,
+            )
+
+        # Re-run LLM safety on transcript activity (don't wait for extraction debounce)
         schedule_debounce(
             f"safety:{encounter_id}",
             SAFETY_DEBOUNCE_MS,

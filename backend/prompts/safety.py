@@ -19,61 +19,73 @@ class SafetyResult:
     recommendedActions: Optional[List[str]] = None
 
 
-SAFETY_SYSTEM = """You are a comprehensive clinical safety intelligence agent for Nos, a pre-hospital EMS AI assistant. For demo purposes only — not for clinical use.
+SAFETY_SYSTEM = """You are the safety intelligence layer for Nos, a pre-hospital EMS AI assistant. For demo purposes only — not for clinical use.
 
-You receive the patient's full clinical picture plus research briefs generated for each identified entity. Your job: reason holistically across ALL of this and flag every situation that could cause patient harm.
+You will receive a structured patient chart compiled from everything said and observed on scene. Read it like a senior ER physician getting a radio handoff, then flag EVERY situation that could harm the patient — whether it's a complex drug interaction, a common-sense physical danger, a missing piece of critical information, or something a reasonable person would immediately recognise as dangerous.
 
-Return ONLY a raw JSON array (no markdown):
+Return ONLY a raw JSON array (no markdown fences, no preamble):
 [{
-  "concern": string,
+  "concern": string,          // one-line summary of the danger
   "severity": "low"|"medium"|"high"|"critical",
-  "rationale": string,
-  "sourceEntities": string[],
+  "rationale": string,        // 1-3 sentences explaining exactly why this is dangerous given the stated facts
   "clarifyingQuestion": string|null,
-  "recommendedActions": string[]
+  "recommendedActions": string[]  // ordered, concrete, imperative — at least 2
 }]
 
 Return [] if no concerns found.
 
+---
+
+SEVERITY — pick exactly one:
+- critical: act RIGHT NOW or patient may die / suffer permanent harm (e.g. administering allergen, active haemorrhage + anticoagulant, airway compromise, dangerous manipulation of unstable limb)
+- high: act before hospital arrival (e.g. warfarin + chest pain, head trauma + blood thinner, serious drug interaction, severe allergy documented)
+- medium: document and hand off — will matter at the ED (e.g. drug combination raising risk, condition that may deteriorate, missing history that affects treatment)
+- low: note and ask — low urgency but worth capturing (mild interaction, ambiguous detail, routine missing info)
+
+---
+
+WHAT TO FLAG — cast a wide net, not just drug interactions:
+
+1. COMMON SENSE DANGERS
+   - Is anyone proposing to do something obviously harmful? (e.g. shaking an unstable limb, removing a stabilising object from a penetrating wound, moving a spinal injury incorrectly)
+   - Does the scene context suggest a risk the patient hasn't named? (e.g. mechanism of injury implies spinal risk even if no neck pain stated)
+   - Is the paramedic about to give something the patient just said they're allergic to?
+
+2. DRUG INTERACTIONS & PHARMACOLOGY
+   - Every drug vs every other drug — known interactions, additive effects, contraindications
+   - Every drug vs every condition — e.g. beta-blockers in asthma, NSAIDs in renal failure, opioids in head injury
+   - Every drug vs the injury/scene — e.g. anticoagulant + active bleeding, vasodilator + hypotension
+
+3. ALLERGY CONFLICTS
+   - Is any drug, food, or substance mentioned on scene related to a stated allergy?
+   - Cross-reactivity: penicillin allergy → cephalosporin risk; sulfa → some diuretics; NSAID → aspirin
+
+4. MISSING CRITICAL INFORMATION
+   - What does a paramedic NEED to know before administering anything or making a treatment decision that hasn't been asked yet?
+   - NREMT gaps: allergies, current medications, last oral intake, events leading to incident, pertinent negatives
+   - Unknown values that change the treatment plan (e.g. INR unknown for anticoagulated patient, glucose unknown for altered mental status)
+
+5. TRAJECTORY RISKS
+   - What might go wrong between now and hospital arrival?
+   - What does the ED need to know that could be missed without this flag?
+   - Is there a time-sensitive intervention window closing? (e.g. tPA window in stroke, golden hour in trauma)
+
+6. VISION & SCENE FINDINGS
+   - Do any items identified by the camera (medications, substances, injuries) conflict with stated allergies, medications, or conditions?
+   - Is anything in the scene context (mechanism of injury, environment) a risk factor?
+
+---
+
 RULES:
-- Only flag concerns grounded in STATED facts from the transcript or extracted entities
-- Never infer from demographics alone — age without a stated symptom is not a flag
-- Use "consider …" / "verify …" language — never a definitive diagnosis
-- sourceEntities: list the specific entity names that triggered this concern
-- clarifyingQuestion: a single targeted question the paramedic should ask or verify RIGHT NOW to resolve uncertainty; null if the danger is already confirmed by stated facts
+- Only flag things grounded in STATED facts, observed entities, or direct logical inference from them
+- Never flag based on demographics alone (age is not a flag without a symptom or drug)
+- Use "consider", "verify", "ensure" language — never a definitive diagnosis
+- clarifyingQuestion: ONE specific question the paramedic should ask RIGHT NOW to resolve uncertainty — null if the danger is already confirmed
+- recommendedActions: always include, always concrete and imperative ("Monitor SpO2 every 2 minutes, target ≥ 94%" not "monitor patient")
+  - If clarifyingQuestion set: cover both branches (if yes / if no)
+  - If danger confirmed: specific pre-hospital steps + what to relay to ED
 
-SEVERITY TIERS — pick exactly one:
-- critical: imminent life threat requiring immediate action (e.g. known allergy + drug being administered, active hemorrhage + anticoagulant, airway compromise)
-- high: serious risk — act before hospital arrival (e.g. warfarin + chest pain, head trauma + blood thinner, unknown INR in anticoagulated ACS patient)
-- medium: significant concern — document and hand off (e.g. drug combination that raises bleeding risk but no active bleeding, condition that could deteriorate)
-- low: worth noting — monitor or ask (e.g. mild interaction, missing routine information, ambiguous history detail)
-
-USE clarifyingQuestion WHEN:
-- The risk level depends on information not yet stated (e.g. "Is the patient's INR currently therapeutic?")
-- A symptom could have two very different causes with very different treatments (e.g. "Is the altered mental status new or chronic?")
-- A medication's safety depends on an unknown factor (e.g. "When was the last dose of warfarin taken?")
-- You can see a potential danger but need one more fact to confirm it
-
-Leave clarifyingQuestion null when the stated facts alone are sufficient to confirm the danger.
-
-recommendedActions: always populate — concrete, ordered steps the paramedic should take RIGHT NOW.
-- If clarifyingQuestion is set: actions should cover what to do while waiting for the answer AND what to do for each likely answer (e.g. "If INR > 3: hold antiplatelet, notify ED; If INR ≤ 2: antiplatelet may proceed with caution")
-- If danger is confirmed: specific pre-hospital interventions, what to avoid, what to communicate to the receiving ED
-- Keep each action to one sentence, imperative, specific (not "monitor patient" — "monitor SpO2 every 2 minutes, target ≥ 94%")
-
-THINK LIKE A SENIOR EMERGENCY PHYSICIAN reviewing the full chart before the patient arrives:
-- Every drug: how does it interact with their conditions, injuries, scene, and other drugs?
-- Every condition: what drugs are contraindicated? What complications should be watched for?
-- Every allergy: what could plausibly be administered on scene that would trigger a reaction?
-- Every injury or significant symptom: how does it interact with existing medications and conditions?
-- Unstable limb trauma (partial detachment, open fracture, limb swinging/dangling): NEVER shake, twist, or aggressively manipulate — immobilize in found position
-- Vision scan findings: do any identified substances conflict with known meds, allergies, or conditions?
-- The trajectory: are there risks in how this patient will be received at the ED?
-- Missing information: is there something unknown that could be critical (e.g. INR unknown for anticoagulated patient)?
-
-Use the research briefs to inform your reasoning — they contain known risks, interactions, and contraindications for each identified entity. Do not limit yourself to the examples in the briefs; reason beyond them.
-
-Be comprehensive — it is better to flag something the paramedic dismisses than to miss something grave."""
+Be comprehensive. A paramedic can dismiss a flag you raise. They cannot act on a danger you missed."""
 
 
 _VALID_SEVERITIES = frozenset({"low", "medium", "high", "critical"})
@@ -113,39 +125,222 @@ def build_safety_prompt(
     entities: MedicalEntities,
     transcript: str = "",
     research_briefs: list | None = None,
+    *,
+    active_meds: list | None = None,
+    vision_items: list | None = None,
+    nremt_gaps: list | None = None,
+    recent_actions: list | None = None,
 ) -> str:
-    from events import to_dict
-    parts = [
-        "=== PATIENT ENTITIES (extracted from scene) ===",
-        json.dumps(to_dict(entities), indent=2),
-    ]
-    if transcript.strip():
-        parts += [
-            "",
-            "=== SCENE TRANSCRIPT (last 4000 chars) ===",
-            transcript[-4000:],
-        ]
+    """
+    Build the full patient chart that the LLM reasons over.
+
+    Design philosophy: compile EVERYTHING known about this patient into a
+    readable, structured markdown document that resembles a clinical chart.
+    The LLM was trained on charts; markdown prose is easier to reason over
+    than raw JSON. The entities section is the authoritative accumulated
+    record; the transcript is recent context; everything else adds breadth.
+    """
+    lines: list[str] = ["# PATIENT SAFETY CHART\n"]
+    lines.append(
+        "> This chart is compiled from the full encounter so far. "
+        "All facts are stated or directly observed — nothing is inferred from demographics alone.\n"
+    )
+
+    # ── PATIENT PROFILE ──────────────────────────────────────────────────────
+    lines.append("## Patient Profile")
+    demo = entities.demographics
+    if demo:
+        age = getattr(demo, "age", None) or getattr(demo, "ageRange", None)
+        sex = getattr(demo, "sex", None) or getattr(demo, "gender", None)
+        weight = getattr(demo, "weight", None)
+        bits = []
+        if age:
+            bits.append(f"Age: {age}")
+        if sex:
+            bits.append(f"Sex: {sex}")
+        if weight:
+            bits.append(f"Weight: {weight}")
+        lines.append(", ".join(bits) if bits else "_Unknown_")
+    else:
+        lines.append("_No demographics recorded yet_")
+    lines.append("")
+
+    # ── CHIEF COMPLAINT / SYMPTOMS ──────────────────────────────────────────
+    lines.append("## Chief Complaint & Symptoms")
+    syms = getattr(entities, "symptoms", []) or []
+    cc = getattr(entities, "chiefComplaint", None) or getattr(entities, "chief_complaint", None)
+    if cc:
+        lines.append(f"**Chief complaint:** {cc}")
+    if syms:
+        for s in syms:
+            name = getattr(s, "name", str(s))
+            severity = getattr(s, "severity", None)
+            onset = getattr(s, "onset", None)
+            detail = name
+            if severity:
+                detail += f" (severity: {severity})"
+            if onset:
+                detail += f" — onset: {onset}"
+            lines.append(f"- {detail}")
+    else:
+        lines.append("_No symptoms recorded_")
+    lines.append("")
+
+    # ── ALLERGIES (HIGH-PRIORITY) ────────────────────────────────────────────
+    lines.append("## ⚠ Allergies")
+    allergies = getattr(entities, "allergies", []) or []
+    if allergies:
+        for a in allergies:
+            name = getattr(a, "name", str(a))
+            reaction = getattr(a, "reaction", None)
+            line = f"- **{name}**"
+            if reaction:
+                line += f" → reaction: {reaction}"
+            lines.append(line)
+    else:
+        lines.append("_No allergies stated (allergy status may be unknown — see gaps below)_")
+    lines.append("")
+
+    # ── MEDICATIONS ─────────────────────────────────────────────────────────
+    lines.append("## Medications")
+    meds = getattr(entities, "medications", []) or []
+    # Deduplicate against active_meds list
+    active_set: set[str] = set()
+    if active_meds:
+        lines.append("### Administered On-Scene")
+        for m in active_meds:
+            lines.append(f"- {m} _(administered by paramedic)_")
+            active_set.add(m.lower().strip())
+        lines.append("")
+    if meds:
+        lines.append("### Patient's Reported Medications")
+        for m in meds:
+            name = getattr(m, "name", str(m))
+            if name.lower().strip() in active_set:
+                continue
+            dose = getattr(m, "dose", None)
+            freq = getattr(m, "frequency", None)
+            source = getattr(m, "source", None)
+            detail = f"- {name}"
+            if dose:
+                detail += f" {dose}"
+            if freq:
+                detail += f", {freq}"
+            if source and source not in ("stated", ""):
+                detail += f" _(source: {source})_"
+            lines.append(detail)
+    if vision_items:
+        lines.append("### Identified by Camera")
+        for vi in vision_items:
+            label = vi.get("label_text") or vi.get("labelText") or vi.get("type", "unknown")
+            confidence = vi.get("confidence", "")
+            lines.append(f"- {label} _(vision scan, confidence: {confidence})_")
+    if not meds and not active_meds and not vision_items:
+        lines.append("_No medications recorded_")
+    lines.append("")
+
+    # ── CONDITIONS / PMH ────────────────────────────────────────────────────
+    lines.append("## Medical Conditions / Past Medical History")
+    conditions = getattr(entities, "conditions", []) or []
+    if conditions:
+        for c in conditions:
+            name = getattr(c, "name", str(c))
+            status = getattr(c, "status", None)
+            detail = f"- {name}"
+            if status:
+                detail += f" ({status})"
+            lines.append(detail)
+    else:
+        lines.append("_None stated_")
+    lines.append("")
+
+    # ── INJURIES ────────────────────────────────────────────────────────────
+    injuries = getattr(entities, "injuries", []) or []
+    if injuries:
+        lines.append("## Injuries")
+        for inj in injuries:
+            name = getattr(inj, "name", str(inj))
+            loc = getattr(inj, "location", None)
+            sev = getattr(inj, "severity", None)
+            detail = f"- {name}"
+            if loc:
+                detail += f" — location: {loc}"
+            if sev:
+                detail += f" (severity: {sev})"
+            lines.append(detail)
+        lines.append("")
+
+    # ── VITALS ──────────────────────────────────────────────────────────────
+    vitals = getattr(entities, "vitals", None) or {}
+    if vitals:
+        lines.append("## Vitals")
+        if isinstance(vitals, dict):
+            for k, v in vitals.items():
+                if v is not None:
+                    lines.append(f"- {k}: {v}")
+        lines.append("")
+
+    # ── RECENT PARAMEDIC ACTIONS ─────────────────────────────────────────────
+    if recent_actions:
+        lines.append("## Recent Paramedic Actions / Plans")
+        lines.append("_(What the paramedic has said they are doing or about to do)_")
+        for action in recent_actions[-10:]:
+            lines.append(f"- {action}")
+        lines.append("")
+
+    # ── ASSESSMENT GAPS (NREMT) ───────────────────────────────────────────────
+    if nremt_gaps:
+        lines.append("## Assessment Gaps (Not Yet Covered)")
+        for gap in nremt_gaps:
+            lines.append(f"- {gap}")
+        lines.append("")
+
+    # ── CLINICAL RESEARCH BRIEFS ─────────────────────────────────────────────
     if research_briefs:
-        parts += ["", "=== CLINICAL RESEARCH BRIEFS (generated for each identified entity) ==="]
+        lines.append("## Clinical Research Briefs")
+        lines.append("_(Auto-generated summaries for each identified entity)_")
         for brief in research_briefs:
             entity = brief.get("entity", "unknown")
             entity_type = brief.get("entityType", "")
             cb = brief.get("clinicalBrief") or {}
-            parts.append(f"\n--- {entity} ({entity_type}) ---")
+            lines.append(f"\n### {entity}" + (f" ({entity_type})" if entity_type else ""))
             if cb.get("summary"):
-                parts.append(f"Summary: {cb['summary']}")
+                lines.append(cb["summary"])
             if cb.get("keyRisks"):
-                parts.append("Key risks: " + "; ".join(cb["keyRisks"]))
+                lines.append("**Key risks:** " + "; ".join(cb["keyRisks"]))
             if cb.get("drugInteractions"):
-                parts.append("Drug interactions: " + "; ".join(cb["drugInteractions"]))
+                lines.append("**Drug interactions:** " + "; ".join(cb["drugInteractions"]))
             if cb.get("contraindications"):
-                parts.append("Contraindications: " + "; ".join(cb["contraindications"]))
+                lines.append("**Contraindications:** " + "; ".join(cb["contraindications"]))
             if cb.get("preHospitalActions"):
-                parts.append("Pre-hospital actions: " + "; ".join(cb["preHospitalActions"]))
+                lines.append("**Pre-hospital actions:** " + "; ".join(cb["preHospitalActions"]))
             elif brief.get("findings"):
-                parts.append(f"Findings: {brief['findings']}")
-    parts += ["", "=== TASK ===", "Identify ALL safety concerns. Return JSON array."]
-    return "\n".join(parts)
+                lines.append(f"**Findings:** {brief['findings']}")
+        lines.append("")
+
+    # ── SCENE TRANSCRIPT ─────────────────────────────────────────────────────
+    if transcript.strip():
+        lines.append("## Scene Transcript")
+        lines.append(
+            "> Everything above is extracted from the full transcript. "
+            "This excerpt shows the most recent exchanges (last ~3 000 chars) "
+            "for nuance and actions/statements not yet reflected in structured fields above."
+        )
+        lines.append("")
+        lines.append(transcript[-3000:])
+        lines.append("")
+
+    # ── TASK ─────────────────────────────────────────────────────────────────
+    lines.append("---")
+    lines.append("## Task")
+    lines.append(
+        "Read the chart above as a senior ER physician receiving this patient. "
+        "Flag EVERY safety concern — drug interactions, allergy conflicts, "
+        "dangerous proposed actions, common-sense physical dangers, missing "
+        "critical information, and trajectory risks. "
+        "Return a JSON array of flags."
+    )
+    return "\n".join(lines)
 
 
 def _allergen_stem(name: str) -> str:
@@ -258,12 +453,21 @@ def heuristic_allergy_flags(
 
 
 _SEVERE_LIMB_TRAUMA = (
+    # Clinical / formal
     "partially detached", "partial detachment", "partially attached",
     "very broken", "badly broken", "badly fractured", "compound fracture",
     "open fracture", "bone sticking", "bone protruding", "bone sticking out",
     "swinging around", "swinging", "dangling", "hanging loose", "hanging off",
     "almost amputat", "nearly severed", "nearly detached",
     "unstable fracture", "limb is detached", "leg is detached", "arm is detached",
+    # Colloquial / natural speech — essential for real scene dialogue
+    "fall off", "falling off", "fell off", "about to come off", "coming off",
+    "barely attached", "barely hanging", "barely connected", "barely holding",
+    "almost off", "nearly off", "almost came off", "nearly came off",
+    "hanging by a thread", "hanging on by", "not attached", "isn't attached",
+    "hardly attached", "just hanging", "about to go", "going to fall",
+    "about to lose", "about to drop off", "can't feel", "no feeling in",
+    "won't stay on", "won't stay attached", "might come off",
 )
 
 _DANGEROUS_LIMB_MANEUVER = (

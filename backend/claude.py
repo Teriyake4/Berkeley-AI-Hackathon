@@ -45,16 +45,20 @@ def has_llm() -> bool:
 HAIKU_MODEL = "claude-haiku-4-5"
 SONNET_MODEL = "claude-sonnet-4-6"
 
-# Per-agent defaults — handoff needs long context; timeline stays fast/cheap
+# Per-agent model/token overrides.
+# Safety uses Sonnet — it's the highest-stakes reasoning in the system.
+# Handoff uses Sonnet for quality. Timeline/extraction use Haiku for speed.
 AGENT_MODELS: dict[str, str] = {}
 AGENT_MAX_TOKENS: dict[str, int] = {
     "handoff": 4096,
+    "safety": 2048,
 }
 
 
 def _refresh_agent_models() -> None:
     AGENT_MODELS.clear()
     AGENT_MODELS.update({
+        "safety": os.environ.get("ANTHROPIC_MODEL_SAFETY", SONNET_MODEL),
         "handoff": os.environ.get("ANTHROPIC_MODEL_HANDOFF", SONNET_MODEL),
         "timeline": os.environ.get("ANTHROPIC_MODEL_TIMELINE", HAIKU_MODEL),
     })
