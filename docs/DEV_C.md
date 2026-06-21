@@ -1,5 +1,8 @@
 # Dev C — UI, Research, CV & Handoff
 
+> **Use this file as your CLAUDE.md.**  
+> **Project context:** [ER_Copilot_Hackathon_Plan.md](../ER_Copilot_Hackathon_Plan.md)
+
 **Branch:** `dev/c-product`  
 **Mission:** Make judges say wow — dashboard, Browserbase research, webcam scene capture, and the **hospital handoff** money shot.
 
@@ -208,8 +211,89 @@ Mock `vision.captured` dispatch in reducer to build Insights panel early.
 
 ## Reference
 
-- [Claude_DEV_C.md](./Claude_DEV_C.md) — **agent team launch prompts**
-- [CLAUDE.md](../CLAUDE.md) · [Project_Context.md](../Project_Context.md) · [ER_Copilot_Hackathon_Plan.md](../ER_Copilot_Hackathon_Plan.md)
+- [ER_Copilot_Hackathon_Plan.md](../ER_Copilot_Hackathon_Plan.md) — project context (read first)
 - [DEV_A.md](./DEV_A.md) · [DEV_B.md](./DEV_B.md)
 - [PARALLEL_BUILD.md](../PARALLEL_BUILD.md)
 - Shared contract: `lib/events.ts` — **sync before changing**
+
+---
+
+# Claude Agent Team (parallel sub-agents)
+
+**Prepend to every launch prompt:**
+
+```
+First read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md.
+```
+
+| Phase | Run in parallel | Wait for |
+|-------|-----------------|----------|
+| **0** | Agents 1 + 2 | — (fixtures only) |
+| **1** | Agent 3 | Agent 1 layout exists |
+| **2** | Agents 4 + 5 + 6 | Agent 3 SSE wired |
+| **3** | Agent 7 | Agents 4–6 functional |
+| **4** | Agent 8 | Full pipeline |
+
+### Agent 1 — Dashboard Shell
+
+**Launch prompt:**
+```
+You are Dashboard Shell agent on Ambulance Copilot (Dev C, Agent 1).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Rebrand UI to Ambulance Copilot; render fixtures/full-encounter-state.json statically.
+```
+
+### Agent 2 — Event Reducer & SSE Hook
+
+**Launch prompt:**
+```
+You are Event Reducer agent on Ambulance Copilot (Dev C, Agent 2).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Implement hooks/useEncounterEvents.ts for all event channels including audio.event, telemetry.updated, vision.captured.
+```
+
+### Agent 3 — Multimodal Timeline UI
+
+**Launch prompt:**
+```
+You are Multimodal Timeline UI agent on Ambulance Copilot (Dev C, Agent 3).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Extend TimelinePanel + TelemetryBar for GPS, audio, and vision entries.
+```
+
+### Agent 4 — Research + Browserbase
+
+**Launch prompt:**
+```
+You are Research agent on Ambulance Copilot (Dev C, Agent 4).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Implement backend/agents/research.py with Browserbase when keyed, fallback otherwise.
+```
+
+### Agent 5 — Vision Capture
+
+**Launch prompt:**
+```
+You are Vision Capture agent on Ambulance Copilot (Dev C, Agent 5).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Create VisionCapture.tsx, POST /api/vision, publish vision.captured.
+```
+
+### Agent 6 — Handoff Modal
+
+**Launch prompt:**
+```
+You are Handoff agent on Ambulance Copilot (Dev C, Agent 6).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Implement handoff agent + HandoffModal before/after split. End demo on this screen.
+```
+
+### Agent 7 — Insights Panel Polish
+
+**Launch prompt:**
+```
+You are Insights Polish agent on Ambulance Copilot (Dev C, Agent 7).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Polish InsightsPanel: safety colors, NREMT reminders, research citations.
+```
+
+### Agent 8 — Demo & Pitch Integration
+
+**Launch prompt:**
+```
+You are Demo Integration agent on Ambulance Copilot (Dev C, Agent 8).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_C.md. Verify full 5-min demo flow; polish ModeToggle. Fix only Dev C files.
+```

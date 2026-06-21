@@ -1,5 +1,8 @@
 # Dev B — Clinical Brain & Safety
 
+> **Use this file as your CLAUDE.md.**  
+> **Project context:** [ER_Copilot_Hackathon_Plan.md](../ER_Copilot_Hackathon_Plan.md)
+
 **Branch:** `dev/b-clinical`  
 **Mission:** Extract every stated fact (especially **allergies**), build the timeline, and flag only defensible safety issues — missed follow-ups, NREMT gaps, med interactions, CV cross-checks.
 
@@ -166,7 +169,83 @@ Inject mock `vision.captured` to test cross-check without Dev C UI.
 
 ## Reference
 
-- [Claude_DEV_B.md](./Claude_DEV_B.md) — **agent team launch prompts**
-- [CLAUDE.md](../CLAUDE.md) · [Project_Context.md](../Project_Context.md) · [ER_Copilot_Hackathon_Plan.md](../ER_Copilot_Hackathon_Plan.md)
+- [ER_Copilot_Hackathon_Plan.md](../ER_Copilot_Hackathon_Plan.md) — project context (read first)
 - [DEV_A.md](./DEV_A.md) · [DEV_C.md](./DEV_C.md)
 - Shared contract: `lib/events.ts` — **sync before changing**
+
+---
+
+# Claude Agent Team (parallel sub-agents)
+
+**Prepend to every launch prompt:**
+
+```
+First read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md.
+```
+
+| Phase | Run in parallel | Wait for |
+|-------|-----------------|----------|
+| **0** | Agent 0 only | Dev A Agent 0 optional |
+| **1** | Agent 1 only | — |
+| **2** | Agents 2 + 3 + 4 | Agent 1 publishes `facts.extracted` |
+| **3** | Agent 5 | Agents 2–4 stable |
+| **4** | Agent 6 | All above |
+
+**Safety rule:** Flag only **stated facts** — never demographic proxy alone.
+
+### Agent 0 — Shared LLM & Debounce
+
+**Launch prompt:**
+```
+You are LLM & Debounce agent on Ambulance Copilot (Dev B, Agent 0).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Implement backend/claude.py, debounce.py, lib/claude.ts, lib/debounce.ts.
+```
+
+### Agent 1 — Extraction
+
+**Launch prompt:**
+```
+You are Extraction agent on Ambulance Copilot (Dev B, Agent 1).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Tune extraction for ambulance dialogue. Allergies mandatory in schema and merge.
+```
+
+### Agent 2 — Safety
+
+**Launch prompt:**
+```
+You are Safety agent on Ambulance Copilot (Dev B, Agent 2).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Implement missed follow-up timer, NREMT reminders, warfarin+chest pain flag, vision.captured med cross-check.
+Only flag stated facts — never age-alone inference.
+```
+
+### Agent 3 — Timeline
+
+**Launch prompt:**
+```
+You are Timeline agent on Ambulance Copilot (Dev B, Agent 3).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Consume facts.extracted, safety.flagged, audio.event, telemetry.updated, vision.captured. Publish timeline.updated.
+```
+
+### Agent 4 — Documentation
+
+**Launch prompt:**
+```
+You are Documentation agent on Ambulance Copilot (Dev B, Agent 4).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Maintain live SOAP/PCR from facts + timeline. Allergies prominent when stated.
+```
+
+### Agent 5 — Vision Consumer
+
+**Launch prompt:**
+```
+You are Vision Consumer agent on Ambulance Copilot (Dev B, Agent 5).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Subscribe to vision.captured; cross-check scanned meds against facts.extracted.
+```
+
+### Agent 6 — Integration & Prompt QA
+
+**Launch prompt:**
+```
+You are Integration agent on Ambulance Copilot (Dev B, Agent 6).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_B.md. Wire backend/agents/runtime.py subscriptions. Run demo replay; verify facts, safety, timeline, note events.
+```

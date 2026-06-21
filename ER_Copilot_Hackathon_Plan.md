@@ -1,11 +1,90 @@
-# ER Copilot — AI Clinical Operations Assistant
-## UC Berkeley AI Hackathon Project Plan
+# Ambulance Copilot — UC Berkeley AI Hackathon Project Plan
 
-> **Ready to build?** → [PARALLEL_BUILD.md](./PARALLEL_BUILD.md) · [Dev A](./docs/DEV_A.md) · [Dev B](./docs/DEV_B.md) · [Dev C](./docs/DEV_C.md)
+> **Single source of truth** for what this project is and why.  
+> **Ready to build?** → [PARALLEL_BUILD.md](./PARALLEL_BUILD.md)
 
-## One-Sentence Pitch
+## One-sentence pitch
 
-ER Copilot is a real-time AI teammate for clinicians that listens to patient conversations, maintains a live understanding of the case, generates documentation automatically, flags potential concerns, and produces perfect handoff reports during shift changes.
+Ambulance Copilot is a real-time AI teammate for paramedics that listens to scene dialogue, captures visual context (pills, wounds, bracelets), maintains a live patient picture, flags missed follow-ups and safety issues, researches drugs and injury protocols, and produces a hospital handoff report — so nothing gets lost between scene and ED.
+
+## Dev tracks (each dev uses their file as CLAUDE.md)
+
+| Dev | Role | Your CLAUDE.md |
+|-----|------|----------------|
+| **A** | Platform & multimodal ingestion | [docs/DEV_A.md](./docs/DEV_A.md) |
+| **B** | Clinical brain & safety | [docs/DEV_B.md](./docs/DEV_B.md) |
+| **C** | UI, research, CV & handoff | [docs/DEV_C.md](./docs/DEV_C.md) |
+
+Each `DEV_*.md` contains your checklist, file ownership, and **Claude agent-team launch prompts** for parallel sub-agents.
+
+---
+
+## Why ambulance (not ER)
+
+- **1-on-1 dialogue** — paramedic and patient (or bystander); easy to demo with two speakers.
+- **Always a handoff** — every call ends with a structured report to the hospital; this is the demo money shot.
+- **Practical constraints** — responder is multitasking; an agent that remembers what was said 5 minutes ago is immediately valuable.
+
+## Safety agent rules (non-negotiable)
+
+The safety agent may **only** flag **stated facts** — something said aloud, written on a bracelet/label, or identified via CV — cross-referenced against:
+
+1. **Another stated fact** (internal contradiction or missed follow-up), or  
+2. **An external reference** (drug interaction DB, clinical guideline via research agent).
+
+**Never** flag something inferred purely from a demographic proxy (e.g. age alone).
+
+### Demo trio (must all work in demo)
+
+| Type | Example | Check |
+|------|---------|-------|
+| **Missed follow-up** | Chest pain mentioned at 0:00, not addressed for 3+ min | Transcript-internal timer |
+| **Stated med + context** | Warfarin + chest pain | Transcript + Browserbase research |
+| **CV med vs known meds** | Vial scanned: aspirin; patient on warfarin | Vision event + extraction cross-check |
+
+Also remind paramedic if a **standard NREMT assessment question** was never asked (e.g. allergies, last oral intake).
+
+## Allergies
+
+**Always collect allergies.** Extraction must pull stated allergies; safety should flag if allergies are unknown after several minutes of assessment; handoff must include allergy status explicitly.
+
+## Computer vision
+
+- **Demo:** web app + laptop webcam — capture pills on scene, wounds, medical alert bracelets.
+- **Pitch line:** *"In the field this would be chest- or helmet-mounted; we use a laptop cam for the hackathon."*
+- CV output merges into `facts.extracted` and feeds safety cross-checks before medication administration.
+
+## Multimodal inputs beyond speech
+
+| Modality | Source | Timeline use |
+|----------|--------|----------------|
+| **Non-speech audio** | Deepgram / audio layer | Prolonged silence, raised voice/distress, monitor alarm tones |
+| **GPS / telemetry** | Structured API or demo timestamps | Scene arrival → patient contact → en route → hospital arrival |
+
+These anchor the handoff timeline objectively ("confirmed by GPS") vs verbal recall alone.
+
+## AI assistant conventions
+
+- Sync with teammates before changing `lib/events.ts` or `backend/events.py`.
+- Structured JSON from LLM agents; idempotent entity merge — don't drop previously extracted facts.
+- No diagnosis in safety flags — use "consider …" / "verify …" language.
+- Minimize scope; match existing patterns in `backend/` and `lib/`.
+- Do not commit `.env` or secrets.
+
+## Integration gates
+
+| Hour | Pass criteria |
+|------|---------------|
+| 6 | Demo replay → SSE → browser logs all channels |
+| 10 | Extraction + safety + timeline visible in UI |
+| 14 | Research citations + handoff modal + one CV capture |
+| 18 | Full ambulance demo script, 3 clean runs |
+
+If the bus breaks, all devs stop feature work and fix ingestion first.
+
+## Environment variables
+
+See `.env.example`. Keys: `ANTHROPIC_API_KEY`, `DEEPGRAM_API_KEY`, `BROWSERBASE_*`, `REDIS_URL`.
 
 ---
 
@@ -27,7 +106,7 @@ ER Copilot instead:
 
 Judges should immediately understand:
 
-"Doctors spend too much time documenting. This reduces paperwork and prevents information loss."
+"Paramedics multitask under pressure. Information gets lost between scene and ED. This captures everything and produces a perfect hospital handoff."
 
 ---
 
@@ -77,49 +156,51 @@ Ship all of this. No reduced scope — build the complete product.
 
 # Core Demo
 
-## Scripted Scenario
+## Scripted Scenario (Ambulance)
 
 Use this exact script for demo prep, prompt tuning, and Demo Mode. Every beat maps to a visible UI update.
 
-### Beat 1 — Chief complaint (0:00)
+### Beat 1 — Scene arrival (0:00)
 
-**Doctor:** "Good morning. I'm Dr. Chen. What brings you in today?"
+**Paramedic:** "Ma'am, I'm Alex with county EMS. What happened?"
 
 **Patient:** "I've had chest pain for about two hours. It started suddenly while I was gardening."
 
-*Expected:* Transcript appears. Timeline: "Patient reports acute chest pain, 2hr duration, exertional onset."
+*Expected:* Transcript appears. Timeline starts. GPS: `scene_arrival`.
 
-### Beat 2 — Demographics & history (0:30)
+### Beat 2 — Allergies & history (0:30)
 
-**Doctor:** "Can you tell me your age and any medical history?"
+**Paramedic:** "Any allergies? Medications? Medical history?"
 
-**Patient:** "I'm 67. I have hypertension — been on lisinopril for years."
+**Patient:** "Penicillin — I get a rash. I'm on lisinopril for blood pressure."
 
-*Expected:* Extraction pulls age, HTN, lisinopril. Timeline updates.
+*Expected:* Extraction pulls penicillin allergy, lisinopril, chest pain. Allergy line in SOAP.
 
 ### Beat 3 — High-alert medication (1:00)
 
-**Doctor:** "Any other medications? Blood thinners?"
+**Paramedic:** "Any blood thinners?"
 
-**Patient:** "Yes, I take warfarin for a heart valve replacement."
+**Patient:** "Yes, warfarin for a heart valve replacement."
 
-*Expected:* Safety agent flags: **Warfarin + chest pain → bleeding/anticoagulation risk, consider ACS workup.** Research agent returns warfarin contraindication references via Browserbase.
+*Expected:* Safety flag: **Warfarin + chest pain (stated).** Research agent returns warfarin interaction references via Browserbase.
 
-### Beat 4 — Missing information (1:30)
+### Beat 4 — Missed follow-up window (1:30–3:30)
 
-**Doctor:** "Any shortness of breath, nausea, or pain radiating to your arm or jaw?"
+**Paramedic:** *(discusses vitals, oxygen, transport — does not revisit chest pain for 3+ minutes)*
 
-**Patient:** "A little short of breath, but no nausea. The pain does go to my left arm."
+*Expected:* Safety flag: **Chest pain mentioned at 0:00 — not addressed in follow-up.** NREMT reminders if gaps remain.
 
-*Expected:* Insights panel updates missing-info checklist. SOAP note O-section fills in.
+### Beat 5 — CV cross-check (3:30)
 
-### Beat 5 — Plan & handoff (2:00)
+**Paramedic:** *(scans aspirin vial found on scene via laptop webcam)*
 
-**Doctor:** "We'll get an ECG and troponin right away. I'm going to start aspirin and consult cardiology."
+*Expected:* `vision.captured` → safety flag: **Aspirin + warfarin before administration.**
+
+### Beat 6 — Hospital handoff (4:00)
 
 *Press "Generate Handoff Report"*
 
-*Expected:* Structured handoff with patient summary, timeline, medications, outstanding questions, recommended next actions. **This is the final screen judges see.**
+*Expected:* Structured hospital handoff with patient summary, **allergies**, GPS-anchored timeline, medications, research citations, outstanding questions. **This is the final screen judges see.**
 
 ---
 
@@ -133,13 +214,15 @@ Messy raw transcript.
 
 ## After
 
-Perfect shift handoff report:
+Perfect **hospital handoff** report:
 
-- Patient summary
-- Timeline
-- Current medications
+- Patient summary + chief complaint
+- **Allergies** (prominent)
+- Timeline with GPS-anchored timestamps
+- Current medications (stated + vision-identified)
+- Research citations for high-risk findings
 - Outstanding questions
-- Recommended next actions
+- Recommended ED actions
 
 End on this screen. Do not end on an architecture slide.
 
@@ -263,6 +346,9 @@ Defined in `backend/events.py` (Python dataclasses). Never rename fields; add ne
 | `research.completed` | Research agent | `{ query, findings: string, citations: Citation[], encounterId }` |
 | `handoff.requested` | Frontend | `{ encounterId }` |
 | `handoff.generated` | Handoff agent | `{ report: HandoffReport, encounterId }` |
+| `audio.event` | Audio layer / Demo | `{ type, timestamp, encounterId, detail? }` |
+| `telemetry.updated` | GPS / Demo | `{ event, timestamp, encounterId, label? }` |
+| `vision.captured` | CV capture | `{ identified, captureType, timestamp, encounterId, rawText? }` |
 
 ---
 
@@ -289,9 +375,9 @@ Two agents per dev. Clean ownership, no bottleneck.
 
 | Dev | Owns | Subscribes To | Publishes |
 |-----|------|---------------|-----------|
-| **Dev A — Voice & Bus** | Deepgram, WebSocket server, Redis setup, Demo Mode injector, Transcription | — | `transcript.segment` |
-| **Dev B — Clinical Brain** | Extraction, Timeline, Safety agents (Claude prompts + handlers) | `transcript.segment` (via buffer), internal | `facts.extracted`, `timeline.updated`, `safety.flagged` |
-| **Dev C — Output & UI** | Documentation, Research (Browserbase), Handoff agents + full Next.js dashboard | `facts.extracted`, `timeline.updated`, `safety.flagged`, `research.completed`, `note.updated`, `handoff.generated` | `handoff.requested`, `note.updated`, `research.completed`, `handoff.generated` |
+| **Dev A — Platform & Ingestion** | Deepgram, SSE/bus, Redis, Demo injector, audio events, GPS/telemetry, LiveMic | — | `transcript.segment`, `audio.event`, `telemetry.updated` |
+| **Dev B — Clinical Brain** | Extraction, Timeline, Safety, Documentation (Claude prompts + handlers) | `transcript.segment` (via buffer), `audio.event`, `telemetry.updated`, `vision.captured` | `facts.extracted`, `timeline.updated`, `safety.flagged`, `note.updated` |
+| **Dev C — UI, Research, CV & Handoff** | Dashboard, Research (Browserbase), Vision capture, Handoff agents | All clinical + ingestion events via SSE | `handoff.requested`, `research.completed`, `handoff.generated`, `vision.captured` |
 
 Integration happens through the event bus, not function imports.
 
@@ -389,7 +475,7 @@ Claude prompts and heuristic fallbacks live in `backend/prompts/` (one file per 
 
 ## Left Panel — Live Transcript
 
-Streaming text. Speaker badges (Doctor / Patient). Auto-scroll.
+Streaming text. Speaker badges (Paramedic / Patient / Bystander). Auto-scroll.
 
 ## Center Panel — Patient Timeline
 
@@ -530,4 +616,4 @@ Visible in the demo, not just on slides:
 
 # Elevator Pitch
 
-ER Copilot is a real-time AI clinical operations assistant that listens to patient interactions, maintains a structured understanding of the case, coordinates six specialized agents to document and analyze information, and automatically generates shift handoff reports so clinicians can spend less time on paperwork and more time caring for patients.
+Ambulance Copilot is a real-time AI teammate for paramedics that listens to scene dialogue, captures visual context, coordinates specialized agents to document and flag safety issues, researches drugs and protocols, and automatically generates hospital handoff reports so nothing gets lost between the field and the ED.

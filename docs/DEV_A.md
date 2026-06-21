@@ -1,5 +1,8 @@
 # Dev A — Platform & Multimodal Ingestion
 
+> **Use this file as your CLAUDE.md.**  
+> **Project context:** [ER_Copilot_Hackathon_Plan.md](../ER_Copilot_Hackathon_Plan.md)
+
 **Branch:** `dev/a-platform`  
 **Mission:** Get every signal into the bus reliably — voice, audio events, GPS, demo replay — and stream it to the browser.
 
@@ -161,8 +164,92 @@ es.onmessage = (e) => console.log(JSON.parse(e.data));
 
 ## Reference
 
-- [Claude_DEV_A.md](./Claude_DEV_A.md) — **agent team launch prompts**
-- [CLAUDE.md](../CLAUDE.md) · [Project_Context.md](../Project_Context.md) · [ER_Copilot_Hackathon_Plan.md](../ER_Copilot_Hackathon_Plan.md)
+- [ER_Copilot_Hackathon_Plan.md](../ER_Copilot_Hackathon_Plan.md) — project context (read first)
 - [DEV_B.md](./DEV_B.md) · [DEV_C.md](./DEV_C.md)
 - [PARALLEL_BUILD.md](../PARALLEL_BUILD.md)
 - Shared contract: `lib/events.ts` — **sync before changing**
+
+---
+
+# Claude Agent Team (parallel sub-agents)
+
+Run **one Claude agent session per sub-agent** below. **Prepend to every launch prompt:**
+
+```
+First read ER_Copilot_Hackathon_Plan.md and docs/DEV_A.md.
+```
+
+| Phase | Run in parallel | Wait for |
+|-------|-----------------|----------|
+| **0** | Agent 0 only | — |
+| **1** | Agents 1 + 2 | Agent 0 done |
+| **2** | Agents 3 + 4 + 5 | Agent 1 done (bus + demo path) |
+| **3** | Agent 6 | Agents 1–5 done |
+
+**Merge rule:** Only Agent 0 may edit `lib/events.ts` / `backend/events.py`.
+
+### Agent 0 — Contract Lead *(run first, solo)*
+
+**Owns:** `lib/events.ts`, `backend/events.py` (ingestion channels only)
+
+**Launch prompt:**
+```
+You are Contract Lead on Ambulance Copilot (Dev A, Agent 0).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_A.md.
+Extend lib/events.ts and backend/events.py with audio.event, telemetry.updated, and vision.captured.
+Add paramedic/patient/bystander speakers. Mirror in Python. Minimal diff. Do not touch other files.
+```
+
+### Agent 1 — Bus & SSE *(parallel with Agent 2 after Agent 0)*
+
+**Launch prompt:**
+```
+You are Bus & SSE agent on Ambulance Copilot (Dev A, Agent 1).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_A.md. Harden backend/bus.py, sse hub, and lib/bus.ts.
+Ensure GET /api/events fans out all event channels. Redis optional with in-memory fallback.
+```
+
+### Agent 2 — Demo Script & Injector *(parallel with Agent 1)*
+
+**Launch prompt:**
+```
+You are Demo Script agent on Ambulance Copilot (Dev A, Agent 2).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_A.md. Rewrite scripts/demo-scenario.json and backend/demo/injector.py for paramedic/patient ambulance call.
+Include telemetry.updated and at least one audio.event. POST /api/encounter demo mode must replay end-to-end.
+```
+
+### Agent 3 — Deepgram & Live Mic *(after Agent 1)*
+
+**Launch prompt:**
+```
+You are Deepgram agent on Ambulance Copilot (Dev A, Agent 3).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_A.md. Implement live mic → transcript.segment with paramedic/patient speakers.
+Use Deepgram if DEEPGRAM_API_KEY set; graceful fallback otherwise.
+```
+
+### Agent 4 — Audio Events *(parallel with 3 & 5)*
+
+**Launch prompt:**
+```
+You are Audio Events agent on Ambulance Copilot (Dev A, Agent 4).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_A.md. Implement audio.event publishing per lib/events.ts contract.
+Demo: ensure injector fires equipment_alarm or prolonged_silence. Live: stub POST endpoint or silence timer.
+```
+
+### Agent 5 — GPS / Telemetry *(parallel with 3 & 4)*
+
+**Launch prompt:**
+```
+You are Telemetry agent on Ambulance Copilot (Dev A, Agent 5).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_A.md. Implement telemetry.updated events and POST /api/telemetry stub.
+Ensure demo scenario injects scene_arrival and patient_contact.
+```
+
+### Agent 6 — Integration & Deploy *(run last)*
+
+**Launch prompt:**
+```
+You are Integration agent on Ambulance Copilot (Dev A, Agent 6).
+Read ER_Copilot_Hackathon_Plan.md and docs/DEV_A.md. Run demo end-to-end: POST /api/encounter demo, verify SSE receives transcript.segment, audio.event, telemetry.updated.
+Fix only Dev A owned files. Report pass/fail per channel.
+```
