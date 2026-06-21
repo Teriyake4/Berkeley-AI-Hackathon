@@ -2,6 +2,11 @@
 
 > Read this before making changes. Sync with teammates before editing `lib/events.ts` or `backend/events.py`.
 
+## Required reading
+
+- **[ER_Copilot_Hackathon_Plan.md](./ER_Copilot_Hackathon_Plan.md)** — Original hackathon plan: problem, demo beats, dashboard, sponsor tracks, pitch. Scope conflicts → this doc + ambulance pivot below.
+- **[CLAUDE.md](./CLAUDE.md)** — AI assistant entry point and links to dev agent teams.
+
 ## One-sentence pitch
 
 Ambulance Copilot is a real-time AI teammate for paramedics that listens to scene dialogue, captures visual context (pills, wounds, bracelets), maintains a live patient picture, flags missed follow-ups and safety issues, researches drugs and injury protocols, and produces a hospital handoff report — so nothing gets lost between scene and ED.

@@ -1,7 +1,15 @@
 # Claude Agent Team — Dev C (UI, Research, CV & Handoff)
 
-> **You are Dev C.** Run sub-agents **in parallel** where dependencies allow.  
-> Shared context: [Claude.md](./Claude.md) · Human checklist: [DEV_C.md](./DEV_C.md)
+> **You are Dev C.** Run sub-agents **in parallel** where dependencies allow.
+
+## Required reading (project background)
+
+Read **before** launching any sub-agent:
+
+1. **[Project_Context.md](../Project_Context.md)** — What Ambulance Copilot is, current scope, safety rules, demo trio, and integration gates.
+2. **[ER_Copilot_Hackathon_Plan.md](../ER_Copilot_Hackathon_Plan.md)** — Hackathon goals, original demo structure, dashboard layout, sponsor tracks, and pitch (scope conflicts → follow Project_Context).
+
+Then: [CLAUDE.md](../CLAUDE.md) · Human checklist: [DEV_C.md](./DEV_C.md)
 
 **Branch:** `dev/c-product`  
 **Mission:** Dashboard, Browserbase research, webcam CV, hospital handoff money shot.
@@ -21,6 +29,12 @@
 | **4** | Agent 8 | Full pipeline |
 
 **Start early:** Agents 1–2 need only `fixtures/full-encounter-state.json` — no waiting on Dev A/B.
+
+**Prepend to every launch prompt:**
+
+```
+First read Project_Context.md and ER_Copilot_Hackathon_Plan.md for project background and demo goals.
+```
 
 ---
 

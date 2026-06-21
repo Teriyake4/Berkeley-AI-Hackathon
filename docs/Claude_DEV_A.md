@@ -1,7 +1,15 @@
 # Claude Agent Team — Dev A (Platform & Ingestion)
 
-> **You are Dev A.** Run sub-agents **in parallel** where dependencies allow.  
-> Shared context: [Claude.md](./Claude.md) · Human checklist: [DEV_A.md](./DEV_A.md)
+> **You are Dev A.** Run sub-agents **in parallel** where dependencies allow.
+
+## Required reading (project background)
+
+Read **before** launching any sub-agent:
+
+1. **[Project_Context.md](../Project_Context.md)** — What Ambulance Copilot is, current scope, safety rules, demo trio, and integration gates.
+2. **[ER_Copilot_Hackathon_Plan.md](../ER_Copilot_Hackathon_Plan.md)** — Hackathon goals, original demo structure, dashboard layout, sponsor tracks, and pitch (scope conflicts → follow Project_Context).
+
+Then: [CLAUDE.md](../CLAUDE.md) · Human checklist: [DEV_A.md](./DEV_A.md)
 
 **Branch:** `dev/a-platform`  
 **Mission:** Every signal enters the bus reliably and streams to the browser.
@@ -13,6 +21,12 @@
 ## How to run this team
 
 Launch **one Claude agent session per sub-agent** below. Use the **Launch prompt** verbatim (fill `{...}`).
+
+**Prepend to every launch prompt:**
+
+```
+First read Project_Context.md and ER_Copilot_Hackathon_Plan.md for project background and demo goals.
+```
 
 | Phase | Run in parallel | Wait for |
 |-------|-----------------|----------|
@@ -45,7 +59,7 @@ Launch **one Claude agent session per sub-agent** below. Use the **Launch prompt
 **Launch prompt:**
 ```
 You are Contract Lead on Ambulance Copilot (Dev A, Agent 0).
-Read docs/Claude_DEV_A.md and docs/Claude.md.
+Read Project_Context.md, ER_Copilot_Hackathon_Plan.md, and docs/Claude_DEV_A.md.
 Extend lib/events.ts and backend/events.py with audio.event, telemetry.updated, and vision.captured.
 Add paramedic/patient/bystander speakers. Mirror in Python. Minimal diff. Do not touch other files.
 Verify types compile. Summarize payload shapes for other agents.
@@ -228,7 +242,7 @@ Do not touch UI or clinical agents.
 2. Fix cross-agent breakage only in Dev A owned files.
 3. Document test commands in comment or DEV_A.md snippet.
 
-**Done when:** Integration gate **Hour 6** passes (see Claude.md).
+**Done when:** Integration gate **Hour 6** passes (see Project_Context.md).
 
 **Launch prompt:**
 ```

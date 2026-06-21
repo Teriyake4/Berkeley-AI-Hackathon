@@ -209,7 +209,7 @@ Mock `vision.captured` dispatch in reducer to build Insights panel early.
 ## Reference
 
 - [Claude_DEV_C.md](./Claude_DEV_C.md) — **agent team launch prompts**
-- [Claude.md](./Claude.md)
+- [CLAUDE.md](../CLAUDE.md) · [Project_Context.md](../Project_Context.md) · [ER_Copilot_Hackathon_Plan.md](../ER_Copilot_Hackathon_Plan.md)
 - [DEV_A.md](./DEV_A.md) · [DEV_B.md](./DEV_B.md)
 - [PARALLEL_BUILD.md](../PARALLEL_BUILD.md)
 - Shared contract: `lib/events.ts` — **sync before changing**

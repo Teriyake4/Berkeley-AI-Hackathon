@@ -162,7 +162,7 @@ es.onmessage = (e) => console.log(JSON.parse(e.data));
 ## Reference
 
 - [Claude_DEV_A.md](./Claude_DEV_A.md) — **agent team launch prompts**
-- [Claude.md](./Claude.md)
+- [CLAUDE.md](../CLAUDE.md) · [Project_Context.md](../Project_Context.md) · [ER_Copilot_Hackathon_Plan.md](../ER_Copilot_Hackathon_Plan.md)
 - [DEV_B.md](./DEV_B.md) · [DEV_C.md](./DEV_C.md)
 - [PARALLEL_BUILD.md](../PARALLEL_BUILD.md)
 - Shared contract: `lib/events.ts` — **sync before changing**

@@ -1,7 +1,15 @@
 # Claude Agent Team — Dev B (Clinical Brain & Safety)
 
-> **You are Dev B.** Run sub-agents **in parallel** where dependencies allow.  
-> Shared context: [Claude.md](./Claude.md) · Human checklist: [DEV_B.md](./DEV_B.md)
+> **You are Dev B.** Run sub-agents **in parallel** where dependencies allow.
+
+## Required reading (project background)
+
+Read **before** launching any sub-agent:
+
+1. **[Project_Context.md](../Project_Context.md)** — What Ambulance Copilot is, current scope, safety rules, demo trio, and integration gates.
+2. **[ER_Copilot_Hackathon_Plan.md](../ER_Copilot_Hackathon_Plan.md)** — Hackathon goals, original demo structure, dashboard layout, sponsor tracks, and pitch (scope conflicts → follow Project_Context).
+
+Then: [CLAUDE.md](../CLAUDE.md) · Human checklist: [DEV_B.md](./DEV_B.md)
 
 **Branch:** `dev/b-clinical`  
 **Mission:** Extract stated facts (especially allergies), build timeline, flag defensible safety issues, maintain live PCR/SOAP.
@@ -21,6 +29,12 @@
 | **4** | Agent 6 | All above |
 
 **Safety rule (all agents):** Flag only **stated facts** (spoken, written, CV). Never flag from demographic proxy alone.
+
+**Prepend to every launch prompt:**
+
+```
+First read Project_Context.md and ER_Copilot_Hackathon_Plan.md for project background and demo goals.
+```
 
 ---
 
